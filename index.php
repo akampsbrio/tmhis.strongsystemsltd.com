@@ -27,6 +27,9 @@ use App\Controllers\AdminUserController;
 use App\Controllers\CurriculumController;
 use App\Controllers\LearnerController;
 use App\Controllers\MaterialController;
+use App\Controllers\GuideController;
+use App\Controllers\ScheduleController;
+use App\Controllers\AssessmentController;
 use App\Utils\Response;
 use App\Utils\Router;
 
@@ -112,6 +115,43 @@ $router->put('/api/officer/materials/{id}', [MaterialController::class, 'updateM
 $router->post('/api/officer/materials/{id}/submit', [MaterialController::class, 'submitMaterial']);
 $router->post('/api/officer/materials/{id}/approve', [MaterialController::class, 'approveMaterial']);
 $router->post('/api/officer/materials/{id}/retire', [MaterialController::class, 'retireMaterial']);
+
+// Parental Guides & Flexible Scheduling (Module 05)
+$router->get('/api/parent/terms', [ScheduleController::class, 'getTerms']);
+$router->get('/api/curriculum/terms', [ScheduleController::class, 'getTerms']);
+
+$router->get('/api/parent/guides', [GuideController::class, 'getGuides']);
+$router->get('/api/guides', [GuideController::class, 'getGuides']);
+$router->get('/api/guides/{id}', [GuideController::class, 'getGuide']);
+$router->get('/api/guides/{id}/export', [GuideController::class, 'exportGuide']);
+$router->post('/api/officer/guides', [GuideController::class, 'createGuide']);
+$router->put('/api/officer/guides/{id}', [GuideController::class, 'updateGuide']);
+$router->post('/api/officer/guides/{id}/submit', [GuideController::class, 'submitForReview']);
+$router->post('/api/officer/guides/{id}/publish', [GuideController::class, 'publishGuide']);
+$router->post('/api/officer/guides/{id}/archive', [GuideController::class, 'archiveGuide']);
+$router->get('/api/officer/guides/{id}/versions', [GuideController::class, 'getVersions']);
+
+$router->get('/api/parent/schedule', [ScheduleController::class, 'getSchedule']);
+$router->post('/api/parent/schedule', [ScheduleController::class, 'createSchedule']);
+$router->put('/api/parent/schedule/{id}', [ScheduleController::class, 'updateSchedule']);
+$router->patch('/api/parent/schedule/{id}/status', [ScheduleController::class, 'updateStatus']);
+$router->delete('/api/parent/schedule/{id}', [ScheduleController::class, 'deleteSchedule']);
+$router->get('/api/parent/schedule/term-summary', [ScheduleController::class, 'getTermSummary']);
+$router->get('/api/parent/schedule/suggested-next', [ScheduleController::class, 'getSuggestedNext']);
+$router->get('/api/parent/schedule/term-roadmap', [ScheduleController::class, 'getTermRoadmap']);
+$router->post('/api/parent/schedule/auto-distribute', [ScheduleController::class, 'autoDistributeTermSchedule']);
+
+// Module 06: Assessments, Attempts & Scoring Routes
+$router->get('/api/assessments', [AssessmentController::class, 'getAssessments']);
+$router->get('/api/assessments/{id}', [AssessmentController::class, 'getAssessmentDetails']);
+$router->post('/api/officer/assessments', [AssessmentController::class, 'createAssessment']);
+$router->put('/api/officer/assessments/{id}', [AssessmentController::class, 'updateAssessment']);
+$router->post('/api/officer/assessments/{id}/publish', [AssessmentController::class, 'publishAssessment']);
+$router->post('/api/assessments/{id}/attempts', [AssessmentController::class, 'startAttempt']);
+$router->post('/api/attempts/{id}/submit', [AssessmentController::class, 'submitAttempt']);
+$router->get('/api/attempts/{id}/result', [AssessmentController::class, 'getAttemptResult']);
+$router->get('/api/parent/assessments/results', [AssessmentController::class, 'getLearnerResults']);
+$router->post('/api/results/{id}/manual-score', [AssessmentController::class, 'manualScoreEssay']);
 
 // Dispatch router
 $router->dispatch();

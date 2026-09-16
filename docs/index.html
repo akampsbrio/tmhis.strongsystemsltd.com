@@ -377,7 +377,8 @@
             <a href="#mod-02" class="nav-link" onclick="Docs.navigate('mod-02')">✅ 02. Parents & Learners</a>
             <a href="#mod-03" class="nav-link" onclick="Docs.navigate('mod-03')">✅ 03. Curriculum (P1–P7)</a>
             <a href="#mod-04" class="nav-link" onclick="Docs.navigate('mod-04')">✅ 04. Learning Materials</a>
-            <a href="#mod-roadmap" class="nav-link" onclick="Docs.navigate('mod-roadmap')">⏳ 05–13. Sprints Roadmap</a>
+            <a href="#mod-05" class="nav-link" onclick="Docs.navigate('mod-05')">✅ 05. Parental Guides & Schedule</a>
+            <a href="#mod-roadmap" class="nav-link" onclick="Docs.navigate('mod-roadmap')">⏳ 06–13. Sprints Roadmap</a>
             
             <div class="nav-group-title">Operations</div>
             <a href="#credentials" class="nav-link" onclick="Docs.navigate('credentials')">🔑 Demo Credentials</a>
@@ -1242,6 +1243,174 @@
             <pre><code>php tests/test_sprint0_sprint1.php && php tests/test_sprint2_learners.php && php tests/test_sprint3_curriculum.php && php tests/test_sprint4_materials.php</code></pre>
         </section>
 
+        <!-- SECTION: MODULE 05 -->
+        <section id="sec-mod-05" class="doc-section">
+            <h1 class="doc-title">Module 05: Parental Guides & Flexible Scheduling</h1>
+            <p class="doc-subtitle">Structured Pedagogical Guidance • Ugandan 3-Term Calendar Integration • Explainable Syllabus Pacing • Non-Destructive Versioning</p>
+
+            <div class="callout">
+                <div class="callout-title">Sprint 5 Status: Completed & Verified ✅</div>
+                <p>Parental guide authoring and editorial review pipeline, target parent education level calibration (Basic, Intermediate, Advanced), Ugandan 3-term academic calendar integration (<code>curriculum_terms</code>), <strong>7-day Weekly Timetable</strong>, <strong>Monthly Calendar Planner</strong>, <strong>12-Week Termly Syllabus Roadmap</strong>, <strong>1-Click Auto-Preplan Engine</strong>, explainable rule-based next-lesson suggestions, and printable/PDF exports are active and verified across <strong>13/13 automated tests</strong> (81/81 cumulative regression).</p>
+            </div>
+
+            <h2 class="section-heading">1. Core Architectural Capabilities</h2>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; margin-top:1rem;">
+                <div class="card" style="padding:1.2rem;">
+                    <h3 style="font-size:1.05rem; margin-top:0;">🎯 Parent Complexity Calibration</h3>
+                    <p style="font-size:0.88rem; color:var(--text-muted); margin-top:4px;">
+                        Guides are tailored for three distinct parent education levels: <strong>Basic</strong> (foundational steps, local household props), <strong>Intermediate</strong> (structured textbook exercises), and <strong>Advanced</strong> (deep analytical rigor and PLE preparation).
+                    </p>
+                </div>
+                <div class="card" style="padding:1.2rem;">
+                    <h3 style="font-size:1.05rem; margin-top:0;">🗓️ Multi-Tier Scheduling Suite</h3>
+                    <p style="font-size:0.88rem; color:var(--text-muted); margin-top:4px;">
+                        Unified planning across <strong>Weekly Timetable (7-day grid)</strong>, <strong>Monthly Calendar (full month with slot chips)</strong>, and <strong>12-Week Termly Syllabus Roadmap</strong> with 1-click <strong>Auto-Preplan Engine</strong> that distributes milestones across weekdays.
+                    </p>
+                </div>
+                <div class="card" style="padding:1.2rem;">
+                    <h3 style="font-size:1.05rem; margin-top:0;">💡 Explainable Next-Lesson Signals</h3>
+                    <p style="font-size:0.88rem; color:var(--text-muted); margin-top:4px;">
+                        Rule-based suggestion engine recommends lessons using transparent signals: sequential syllabus milestones, catch-up reminders for skipped sessions, and term priority, featuring 1-click scheduling and guide opening.
+                    </p>
+                </div>
+                <div class="card" style="padding:1.2rem;">
+                    <h3 style="font-size:1.05rem; margin-top:0;">🛡️ Non-Destructive Version Snapshots</h3>
+                    <p style="font-size:0.88rem; color:var(--text-muted); margin-top:4px;">
+                        Every published guide modification automatically captures an immutable historical snapshot in <code>parental_guide_versions</code>, preserving editorial audit trails and rollbacks.
+                    </p>
+                </div>
+            </div>
+
+            <h2 class="section-heading">2. Editorial & Guide Lifecycle State Machine</h2>
+            <div style="background:var(--bg-card); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-color); font-family:monospace; font-size:0.9rem; margin-bottom:1.5rem;">
+                [Draft (✍️)] &rarr; [Under Review (🔍)] &rarr; [Published (📖)] &rarr; [Archived (🗄️)]
+            </div>
+
+            <h2 class="section-heading">3. Module 05 REST API Reference</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Endpoint</th>
+                            <th>Description</th>
+                            <th>Access Scope</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/parent/terms</code></td>
+                            <td>List 2026 academic terms with active flag and current term-week calculation (1–12)</td>
+                            <td>Authenticated (All roles)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/parent/guides</code></td>
+                            <td>List published parental guides with filters (class_id, term_id, education_level_target, search)</td>
+                            <td>Authenticated (Parents, Learners, Teachers)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/guides/{id}</code></td>
+                            <td>Retrieve structured guide details, objectives, teaching steps, checklist, and related digital materials</td>
+                            <td>Authenticated</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/guides/{id}/export</code></td>
+                            <td>Generate clean printable/downloadable format for home printing or offline reference</td>
+                            <td>Authenticated</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/guides</code></td>
+                            <td>Author a new parental guide draft with class-subject validation and initial version snapshot</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">PUT</span></td>
+                            <td><code>/api/officer/guides/{id}</code></td>
+                            <td>Update guide details; automatically snapshots previous edition into <code>parental_guide_versions</code> if published</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/guides/{id}/submit</code></td>
+                            <td>Transition draft guide to under-review status for senior officer evaluation</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/guides/{id}/publish</code></td>
+                            <td>Approve and publish guide, making it immediately visible to parents and offline clients</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/parent/schedule</code></td>
+                            <td>Fetch weekly or monthly schedule items filtered by learner_id, term_id, and date range</td>
+                            <td>Parent (Scoped to owned children), Learner</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/parent/schedule</code></td>
+                            <td>Schedule a lesson session with automatic term resolution from scheduled date</td>
+                            <td>Parent</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">PUT</span></td>
+                            <td><code>/api/parent/schedule/{id}</code></td>
+                            <td>Reschedule session date, time slot, or notes</td>
+                            <td>Parent</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">PATCH</span></td>
+                            <td><code>/api/parent/schedule/{id}/status</code></td>
+                            <td>Update session status (<code>planned</code>, <code>completed</code>, <code>skipped</code>, <code>cancelled</code>)</td>
+                            <td>Parent</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">DELETE</span></td>
+                            <td><code>/api/parent/schedule/{id}</code></td>
+                            <td>Remove a planned session entry from the timetable</td>
+                            <td>Parent</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/parent/schedule/term-summary</code></td>
+                            <td>Compute term progress metrics (hours logged, completed sessions, completion percentage)</td>
+                            <td>Parent</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/parent/schedule/term-roadmap</code></td>
+                            <td>Retrieve 12-week syllabus pacing roadmap across all class subjects with milestone completion status</td>
+                            <td>Parent</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/parent/schedule/auto-distribute</code></td>
+                            <td>Auto-distribute unscheduled syllabus milestones across active term weekdays sequentially</td>
+                            <td>Parent</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/parent/schedule/suggested-next</code></td>
+                            <td>Generate explainable next-lesson recommendations per learner</td>
+                            <td>Parent</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 class="section-heading">4. Verification & Automated Test Suite</h2>
+            <p>Run the Module 05 automated test runner (13/13 tests passing):</p>
+            <pre><code>php tests/test_sprint5_guides_scheduling.php</code></pre>
+            <p style="margin-top: 0.5rem;">To verify the complete regression test suite across Sprint 0, 1, 2, 3, 4, and 5 (81/81 tests passing):</p>
+            <pre><code>php tests/test_sprint0_sprint1.php && php tests/test_sprint2_learners.php && php tests/test_sprint3_curriculum.php && php tests/test_sprint4_materials.php && php tests/test_sprint5_guides_scheduling.php</code></pre>
+        </section>
+
         <!-- SECTION: ROADMAP -->
         <section id="sec-mod-roadmap" class="doc-section">
             <h1 class="doc-title">Sprint & Module Roadmap (01 – 13)</h1>
@@ -1262,8 +1431,8 @@
                         <tr><td>Sprint 2</td><td>Module 02: Parent, Family and Learner Management</td><td><span class="badge badge-success">Completed</span></td></tr>
                         <tr><td>Sprint 3</td><td>Module 03: Curriculum Management (P1–P7)</td><td><span class="badge badge-success">Completed</span></td></tr>
                         <tr><td>Sprint 4</td><td>Module 04: Learning Materials & Digital Delivery (300 MB)</td><td><span class="badge badge-success">Completed</span></td></tr>
-                        <tr><td>Sprint 5</td><td>Module 05: Parental Guides & Flexible Scheduling</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
-                        <tr><td>Sprint 6</td><td>Module 06: Online & Offline Assessments & Scoring</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 5</td><td>Module 05: Parental Guides & Flexible Scheduling</td><td><span class="badge badge-success">Completed</span></td></tr>
+                        <tr><td>Sprint 6</td><td>Module 06: Online & Offline Assessments & Server-Side Scoring</td><td><span class="badge badge-success">Completed</span></td></tr>
                         <tr><td>Sprint 7</td><td>Module 07: PWA Offline Architecture & Synchronisation</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
                         <tr><td>Sprint 8</td><td>Module 08: Progress Tracking & Dashboards</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
                         <tr><td>Sprint 9</td><td>Module 09: Reporting & Compliance Analytics</td><td><span class="badge badge-pending">Upcoming</span></td></tr>

@@ -11,8 +11,17 @@ class AuthMiddleware
 {
     private static ?array $authenticatedUser = null;
 
+    public static function authenticate(): array
+    {
+        return self::handle();
+    }
+
     public static function handle(): array
     {
+        if (self::$authenticatedUser !== null) {
+            return self::$authenticatedUser;
+        }
+
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }

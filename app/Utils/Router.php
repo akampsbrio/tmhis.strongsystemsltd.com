@@ -81,7 +81,26 @@ class Router
                     if (is_array($route['handler'])) {
                         [$class, $method] = $route['handler'];
                         $controller = new $class();
-                        call_user_func_array([$controller, $method], $params);
+                        $refMethod = new \ReflectionMethod($controller, $method);
+                        $methodParams = $refMethod->getParameters();
+                        $castedParams = [];
+                        foreach ($params as $idx => $val) {
+                            if (isset($methodParams[$idx])) {
+                                $type = $methodParams[$idx]->getType();
+                                if ($type instanceof \ReflectionNamedType) {
+                                    $typeName = $type->getName();
+                                    if ($typeName === 'int' && is_numeric($val)) {
+                                        $castedParams[] = (int)$val;
+                                        continue;
+                                    } elseif ($typeName === 'float' && is_numeric($val)) {
+                                        $castedParams[] = (float)$val;
+                                        continue;
+                                    }
+                                }
+                            }
+                            $castedParams[] = is_numeric($val) ? (int)$val : $val;
+                        }
+                        call_user_func_array([$controller, $method], $castedParams);
                     } else {
                         call_user_func_array($route['handler'], $params);
                     }

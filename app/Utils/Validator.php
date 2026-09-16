@@ -72,8 +72,15 @@ class Validator
         return $errors;
     }
 
-    public function required(string $field, string $label = ''): self
+    public function required(string|array $field, string $label = ''): self
     {
+        if (is_array($field)) {
+            foreach ($field as $f) {
+                $this->required($f);
+            }
+            return $this;
+        }
+
         $label = $label ?: ucfirst(str_replace('_', ' ', $field));
         if (!isset($this->data[$field]) || trim((string)$this->data[$field]) === '') {
             $this->errors[$field][] = "{$label} is required.";
@@ -122,6 +129,11 @@ class Validator
     }
 
     public function passes(): bool
+    {
+        return empty($this->errors);
+    }
+
+    public function isValid(): bool
     {
         return empty($this->errors);
     }

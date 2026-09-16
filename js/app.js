@@ -102,7 +102,7 @@ const App = {
                                     <span>📁</span> Digital Materials
                                 </a>
                                 <a href="#parent-guides" class="dropdown-item" onclick="App.closeUserDropdown()">
-                                    <span>📖</span> Parental Guides
+                                    <span>📖</span> Parent Guides and Timetables
                                 </a>
                                 <a href="#parent-assessments" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📝</span> Quizzes & Scores
@@ -259,6 +259,18 @@ const App = {
             this.renderCurriculumExplorer(content);
         } else if (currentHash === '#officer-materials' || currentHash === '#learner-materials' || currentHash === '#learning-materials' || currentHash === '#materials-library') {
             this.renderMaterials(content);
+        } else if (currentHash === '#parent-guides' || currentHash === '#guides' || currentHash === '#officer-guides' || currentHash === '#parental-guides') {
+            GuidesApp.init(content);
+        } else if (currentHash === '#parent-monthly-planner' || currentHash === '#monthly-planner' || currentHash === '#monthly-calendar') {
+            ScheduleApp.init(content, 'month');
+        } else if (currentHash === '#parent-termly-planner' || currentHash === '#termly-planner' || currentHash === '#term-roadmap' || currentHash === '#term-planner') {
+            ScheduleApp.init(content, 'term');
+        } else if (currentHash === '#parent-schedule' || currentHash === '#schedule' || currentHash === '#weekly-schedule' || currentHash === '#timetable') {
+            ScheduleApp.init(content, 'week');
+        } else if (currentHash === '#parent-assessments' || currentHash === '#teacher-assessments' || currentHash === '#assessment-results' || currentHash === '#gradebook') {
+            AssessmentsApp.renderPerformanceView(content);
+        } else if (currentHash === '#learner-assessments' || currentHash === '#assessments' || currentHash === '#quizzes' || currentHash === '#take-assessment') {
+            AssessmentsApp.init(content);
         } else {
             this.renderGenericDashboard(content, currentHash);
         }
@@ -841,9 +853,19 @@ const App = {
                         <a href="#parent-learners" class="btn btn-primary btn-sm">Manage Learners</a>
                     </div>
                     <div class="card">
-                        <h3>Parental Guides <span>📖</span></h3>
-                        <p>View step-by-step teaching guides, weekly lesson plans, and teaching tips.</p>
-                        <a href="#parent-guides" class="btn btn-secondary btn-sm">View Guides</a>
+                        <h3>Weekly Timetable <span>📅</span></h3>
+                        <p>Flexible weekly scheduling, lesson pacing, and explainable next-lesson signals.</p>
+                        <a href="#parent-schedule" class="btn btn-primary btn-sm">Open Timetable</a>
+                    </div>
+                    <div class="card">
+                        <h3>Parent Guides & Timetables <span>📖</span></h3>
+                        <p>View step-by-step teaching guides, flexible schedules, weekly, monthly, and 12-week planners.</p>
+                        <a href="#parent-guides" class="btn btn-primary btn-sm">Open Guides & Timetables</a>
+                    </div>
+                    <div class="card">
+                        <h3>Digital Materials <span>📁</span></h3>
+                        <p>Explore multimedia textbooks, videos, audio pronunciations, and worksheets.</p>
+                        <a href="#learner-materials" class="btn btn-secondary btn-sm">Browse Materials</a>
                     </div>
                     <div class="card">
                         <h3>Assessments & Scores <span>📝</span></h3>
@@ -939,6 +961,11 @@ const App = {
                         <h3>Learning Materials Review <span>📁</span></h3>
                         <p>Approve, version, and publish educational notes, worksheets, and media.</p>
                         <a href="#officer-materials" class="btn btn-secondary btn-sm">Review Materials</a>
+                    </div>
+                    <div class="card">
+                        <h3>Assessments & Item Banks <span>✍️</span></h3>
+                        <p>Author questions, establish passing criteria, and publish primary quizzes.</p>
+                        <a href="#learner-assessments" class="btn btn-secondary btn-sm">Manage Assessments</a>
                     </div>
                     <div class="card">
                         <h3>National Compliance <span>📈</span></h3>
