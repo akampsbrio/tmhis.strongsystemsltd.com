@@ -54,7 +54,7 @@ const App = {
             headerActions.innerHTML = `
                 <div class="user-badge">
                     <span>${this.escapeHtml(displayName)}</span>
-                    <span class="role-tag">${user.role_code}</span>
+                    ${this.formatRoleBadge(user.role_code)}
                 </div>
                 <button class="btn btn-secondary btn-sm" onclick="App.navigate('#profile')">Profile</button>
                 <button class="btn btn-danger btn-sm" onclick="Auth.logout()">Logout</button>
@@ -142,6 +142,18 @@ const App = {
             case 'administrator': return '#admin-dashboard';
             default: return '#login';
         }
+    },
+
+    formatRoleBadge(roleCode) {
+        const icons = {
+            'administrator': '⚙️ Admin',
+            'curriculum_officer': '🏛️ Officer',
+            'teacher': '👩‍🏫 Teacher',
+            'parent': '👨‍👩‍👧 Parent',
+            'learner': '🎒 Learner'
+        };
+        const label = icons[roleCode] || (roleCode ? roleCode.replace('_', ' ') : 'User');
+        return `<span class="role-tag role-${roleCode}">${this.escapeHtml(label)}</span>`;
     },
 
     escapeHtml(str) {
@@ -429,7 +441,7 @@ const App = {
                     <p style="margin-top:4px;">Account details and security preferences</p>
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:1rem; font-size:0.95rem;">
                         <div><strong>Email:</strong> ${this.escapeHtml(user.email)}</div>
-                        <div><strong>Role:</strong> <span class="role-tag">${user.role_code}</span></div>
+                        <div><strong>Role:</strong> ${this.formatRoleBadge(user.role_code)}</div>
                         <div><strong>Account Status:</strong> <span class="status-badge status-${user.account_status}">${user.account_status}</span></div>
                         <div><strong>Last Login:</strong> ${user.last_login_at || 'Never'}</div>
                     </div>
@@ -718,7 +730,7 @@ const App = {
                                     <strong>${this.escapeHtml(u.email)}</strong>
                                     <div style="font-size:0.75rem; color:var(--text-muted);">${this.escapeHtml(u.username || '')}</div>
                                 </td>
-                                <td><span class="role-tag">${u.role_code}</span></td>
+                                <td>${this.formatRoleBadge(u.role_code)}</td>
                                 <td><span class="status-badge status-${u.account_status}">${u.account_status}</span></td>
                                 <td>${u.last_login_at ? u.last_login_at : 'Never'}</td>
                                 <td>

@@ -113,13 +113,47 @@ header.app-header {
 }
 
 .role-tag {
-    background: #2563eb;
-    color: white;
-    font-size: 0.7rem;
-    padding: 2px 8px;
-    border-radius: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 14px;
+    text-transform: capitalize;
+    letter-spacing: 0.3px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* Specific Role Colors */
+.role-tag.role-administrator, .role-administrator {
+    background: #581c87;
+    color: #f3e8ff;
+    border: 1px solid #9333ea;
+}
+
+.role-tag.role-curriculum_officer, .role-curriculum_officer {
+    background: #064e3b;
+    color: #a7f3d0;
+    border: 1px solid #10b981;
+}
+
+.role-tag.role-teacher, .role-teacher {
+    background: #1e3a8a;
+    color: #bfdbfe;
+    border: 1px solid #3b82f6;
+}
+
+.role-tag.role-parent, .role-parent {
+    background: #7c2d12;
+    color: #fed7aa;
+    border: 1px solid #f97316;
+}
+
+.role-tag.role-learner, .role-learner {
+    background: #0e7490;
+    color: #cffafe;
+    border: 1px solid #06b6d4;
 }
 
 /* Main Container */
