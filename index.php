@@ -24,6 +24,7 @@ spl_autoload_register(function (string $class) {
 
 use App\Controllers\AuthController;
 use App\Controllers\AdminUserController;
+use App\Controllers\CurriculumController;
 use App\Controllers\LearnerController;
 use App\Utils\Response;
 use App\Utils\Router;
@@ -85,6 +86,19 @@ $router->put('/api/admin/users/{id}', [AdminUserController::class, 'update']);
 $router->patch('/api/admin/users/{id}/status', [AdminUserController::class, 'updateStatus']);
 $router->post('/api/admin/users/{id}/reset-password', [AdminUserController::class, 'resetPassword']);
 $router->post('/api/admin/users/{id}/unlock', [AdminUserController::class, 'unlock']);
+
+// Curriculum Management (Module 03)
+$router->get('/api/curriculum/classes', [CurriculumController::class, 'getClasses']);
+$router->get('/api/curriculum/classes/{id}/subjects', [CurriculumController::class, 'getSubjects']);
+$router->get('/api/curriculum/subjects/{id}', [CurriculumController::class, 'getSubject']);
+$router->get('/api/curriculum/subjects/{id}/lessons', [CurriculumController::class, 'getLessons']);
+$router->get('/api/curriculum/lessons/{id}', [CurriculumController::class, 'getLesson']);
+$router->post('/api/officer/subjects', [CurriculumController::class, 'createSubject']);
+$router->put('/api/officer/subjects/{id}', [CurriculumController::class, 'updateSubject']);
+$router->post('/api/officer/lessons', [CurriculumController::class, 'createLesson']);
+$router->put('/api/officer/lessons/{id}', [CurriculumController::class, 'updateLesson']);
+$router->post('/api/officer/lessons/{id}/retire', [CurriculumController::class, 'retireLesson']);
+$router->post('/api/officer/lessons/reorder', [CurriculumController::class, 'reorderLessons']);
 
 // Dispatch router
 $router->dispatch();

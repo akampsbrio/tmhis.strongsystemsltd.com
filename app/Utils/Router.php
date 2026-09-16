@@ -75,7 +75,7 @@ class Router
         // Check matching route
         foreach ($this->routes as $route) {
             if ($route['method'] === $requestMethod && preg_match($route['pattern'], $requestUri, $matches)) {
-                $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
+                $params = array_values(array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY));
                 
                 try {
                     if (is_array($route['handler'])) {

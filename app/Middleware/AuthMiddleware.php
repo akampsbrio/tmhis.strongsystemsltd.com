@@ -27,8 +27,8 @@ class AuthMiddleware
         }
 
         // 2. Check Authorization Bearer header or custom token
-        $headers = getallheaders();
-        $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+        $headers = function_exists('getallheaders') ? (getallheaders() ?: []) : [];
+        $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
         if (str_starts_with($authHeader, 'Bearer ')) {
             $token = trim(substr($authHeader, 7));
             $user = self::validateBearerToken($token);

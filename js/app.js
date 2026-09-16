@@ -78,6 +78,9 @@ const App = {
                                 <a href="#admin-users" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>👥</span> User Accounts
                                 </a>
+                                <a href="#curriculum-explorer" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📚</span> Curriculum Explorer
+                                </a>
                                 <a href="#admin-audit" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>🛡️</span> Security & Audit Log
                                 </a>
@@ -88,6 +91,9 @@ const App = {
                             ${user.role_code === 'parent' ? `
                                 <a href="#parent-learners" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>🎒</span> My Learners
+                                </a>
+                                <a href="#curriculum-explorer" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📚</span> Curriculum Syllabus
                                 </a>
                                 <a href="#parent-guides" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📖</span> Parental Guides
@@ -100,8 +106,8 @@ const App = {
                                 </a>
                             ` : ''}
                             ${user.role_code === 'learner' ? `
-                                <a href="#learner-subjects" class="dropdown-item" onclick="App.closeUserDropdown()">
-                                    <span>📚</span> My Subjects
+                                <a href="#curriculum-explorer" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📚</span> My Subjects & Syllabus
                                 </a>
                                 <a href="#learner-lessons" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>▶️</span> Continue Lessons
@@ -117,6 +123,9 @@ const App = {
                                 <a href="#teacher-learners" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>👥</span> Assigned Learners
                                 </a>
+                                <a href="#curriculum-explorer" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📚</span> Curriculum Syllabus
+                                </a>
                                 <a href="#teacher-assessments" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>✅</span> Review & Grading
                                 </a>
@@ -125,8 +134,8 @@ const App = {
                                 </a>
                             ` : ''}
                             ${user.role_code === 'curriculum_officer' ? `
-                                <a href="#officer-classes" class="dropdown-item" onclick="App.closeUserDropdown()">
-                                    <span>📋</span> Curriculum Setup
+                                <a href="#curriculum-explorer" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📋</span> Curriculum & Lessons
                                 </a>
                                 <a href="#officer-materials" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📁</span> Learning Materials
@@ -234,6 +243,8 @@ const App = {
             this.renderTeacherDashboard(content);
         } else if (currentHash === '#officer-dashboard') {
             this.renderOfficerDashboard(content);
+        } else if (currentHash === '#curriculum-explorer' || currentHash === '#officer-classes' || currentHash === '#learner-subjects') {
+            this.renderCurriculumExplorer(content);
         } else {
             this.renderGenericDashboard(content, currentHash);
         }
@@ -2422,12 +2433,735 @@ const App = {
         }
     },
 
+    // =========================================================================
+    // MODULE 03: CURRICULUM MANAGEMENT (P1–P7) & LESSON EXPLORER
+    // =========================================================================
+
+    curriculumState: {
+        classes: [],
+        subjects: [],
+        lessons: [],
+        activeClassId: null,
+        activeSubjectId: null,
+        searchTerm: '',
+        statusFilter: 'active'
+    },
+
+    async renderCurriculumExplorer(container) {
+        const user = Auth.getUser();
+        const role = Auth.getRole();
+        const isStaff = ['curriculum_officer', 'administrator'].includes(role);
+        const defaultDash = this.getDefaultDashboard();
+
+        container.innerHTML = `
+            <div style="max-width:1250px; margin:0 auto;">
+                <div class="curriculum-header-bar">
+                    <div>
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <h2 style="margin:0;">🇺🇬 NCDC Curriculum Explorer (P1–P7)</h2>
+                            <span class="badge badge-success" style="font-size:0.75rem;">Syllabus v2026.1</span>
+                            <span class="badge badge-primary" style="font-size:0.75rem;">NCDC / MoES Standard</span>
+                        </div>
+                        <p style="color:var(--text-muted); margin-top:4px;">
+                            Uganda National Curriculum Development Centre • Competency-Based Primary Education Framework
+                        </p>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <a href="${defaultDash}" class="btn btn-secondary btn-sm">← Back to Dashboard</a>
+                        ${isStaff ? `
+                            <button class="btn btn-primary btn-sm" onclick="App.openCreateSubjectModal()">➕ Add Subject</button>
+                            <button class="btn btn-primary btn-sm" onclick="App.openCreateLessonModal()">➕ Add Lesson</button>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <div id="curriculum-alert" style="margin-bottom:1rem;"></div>
+
+                <!-- Class Tabs (P1 to P7) -->
+                <div id="curriculum-class-tabs" class="curriculum-class-tabs">
+                    <div style="padding:0.75rem; color:var(--text-muted);">Loading primary classes...</div>
+                </div>
+
+                <!-- Main Curriculum Grid: Subjects (Left) + Sequenced Lessons (Right) -->
+                <div style="display:grid; grid-template-columns: 340px 1fr; gap: 1.5rem; align-items:start;" id="curriculum-split-layout">
+                    
+                    <!-- Subjects Panel -->
+                    <div class="card" style="padding:1.25rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.6rem;">
+                            <h3 style="font-size:1.05rem; margin:0;">Class Subjects</h3>
+                            <span id="curriculum-subject-count-badge" class="badge badge-pending" style="font-size:0.75rem;">0 Subjects</span>
+                        </div>
+                        <div id="curriculum-subjects-container" style="display:flex; flex-direction:column; gap:8px;">
+                            <div style="color:var(--text-muted); font-size:0.9rem;">Select a class level above.</div>
+                        </div>
+                    </div>
+
+                    <!-- Lessons Timeline Panel -->
+                    <div class="lesson-timeline-container">
+                        <div class="lesson-timeline-header">
+                            <div>
+                                <h3 id="curriculum-active-subject-title" style="font-size:1.15rem; margin:0;">Select a Subject</h3>
+                                <p id="curriculum-active-subject-subtitle" style="font-size:0.82rem; color:var(--text-muted); margin-top:2px;">
+                                    Sequenced lesson pathway and learning objectives
+                                </p>
+                            </div>
+                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                                <input type="text" id="curriculum-lesson-search" class="form-control" placeholder="🔍 Search lesson topic or objective..." style="width:240px; padding:0.4rem 0.8rem; font-size:0.85rem;" oninput="App.handleCurriculumSearch(this.value)">
+                                ${isStaff ? `
+                                    <select id="curriculum-lesson-status-filter" class="form-control" style="width:auto; padding:0.4rem 0.8rem; font-size:0.85rem;" onchange="App.handleCurriculumStatusChange(this.value)">
+                                        <option value="active">Active Only</option>
+                                        <option value="all">All (Inc. Retired)</option>
+                                    </select>
+                                ` : ''}
+                            </div>
+                        </div>
+
+                        <div id="curriculum-lessons-container" class="lesson-timeline-list">
+                            <div style="text-align:center; padding:2rem; color:var(--text-muted);">
+                                Loading lessons...
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Officer Authoring Modals -->
+                ${isStaff ? this.renderCurriculumModalsHtml() : ''}
+            </div>
+        `;
+
+        await this.loadCurriculumClasses();
+    },
+
+    async loadCurriculumClasses() {
+        const tabsContainer = document.getElementById('curriculum-class-tabs');
+        if (!tabsContainer) return;
+
+        try {
+            const res = await API.get('/api/curriculum/classes');
+            this.curriculumState.classes = res.data || [];
+
+            if (this.curriculumState.classes.length === 0) {
+                tabsContainer.innerHTML = '<div style="padding:1rem; color:var(--text-muted);">No primary classes found.</div>';
+                return;
+            }
+
+            tabsContainer.innerHTML = this.curriculumState.classes.map(cls => `
+                <button class="curriculum-class-tab ${this.curriculumState.activeClassId === cls.class_id ? 'active' : ''}" 
+                        id="class-tab-${cls.class_id}" 
+                        onclick="App.selectCurriculumClass(${cls.class_id})">
+                    <span>${this.escapeHtml(cls.class_code)}</span>
+                    <span class="tab-badge">${cls.total_subjects} Subj • ${cls.total_lessons} Lessons</span>
+                </button>
+            `).join('');
+
+            // If no active class selected, select the first class (or P1)
+            const targetClassId = this.curriculumState.activeClassId || this.curriculumState.classes[0].class_id;
+            await this.selectCurriculumClass(targetClassId);
+        } catch (err) {
+            tabsContainer.innerHTML = `<div class="alert alert-danger" style="margin:0.5rem 0;">${this.escapeHtml(err.message)}</div>`;
+        }
+    },
+
+    async selectCurriculumClass(classId) {
+        this.curriculumState.activeClassId = classId;
+
+        // Update active tab class
+        document.querySelectorAll('.curriculum-class-tab').forEach(tab => tab.classList.remove('active'));
+        const activeTab = document.getElementById(`class-tab-${classId}`);
+        if (activeTab) activeTab.classList.add('active');
+
+        const subjectsContainer = document.getElementById('curriculum-subjects-container');
+        const countBadge = document.getElementById('curriculum-subject-count-badge');
+        if (!subjectsContainer) return;
+
+        subjectsContainer.innerHTML = '<div style="color:var(--text-muted); padding:0.5rem 0;">Loading subjects...</div>';
+
+        try {
+            const res = await API.get(`/api/curriculum/classes/${classId}/subjects`);
+            const data = res.data || {};
+            this.curriculumState.subjects = data.subjects || [];
+
+            if (countBadge) {
+                countBadge.innerText = `${this.curriculumState.subjects.length} Subjects`;
+            }
+
+            if (this.curriculumState.subjects.length === 0) {
+                subjectsContainer.innerHTML = '<div style="color:var(--text-muted); padding:0.5rem 0;">No subjects registered for this class.</div>';
+                document.getElementById('curriculum-lessons-container').innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-muted);">No lessons available.</div>';
+                return;
+            }
+
+            const role = Auth.getRole();
+            const isStaff = ['curriculum_officer', 'administrator'].includes(role);
+
+            subjectsContainer.innerHTML = this.curriculumState.subjects.map(subj => `
+                <div class="subject-select-card ${this.curriculumState.activeSubjectId === subj.subject_id ? 'active' : ''}" 
+                     id="subject-card-${subj.subject_id}" 
+                     onclick="App.selectCurriculumSubject(${subj.subject_id})">
+                    <div class="subject-card-head">
+                        <span class="subject-card-code">${this.escapeHtml(subj.subject_code)}</span>
+                        ${isStaff ? `
+                            <button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.75rem;" onclick="event.stopPropagation(); App.openEditSubjectModal(${subj.subject_id})">✏️ Edit</button>
+                        ` : ''}
+                    </div>
+                    <div class="subject-card-title">${this.escapeHtml(subj.subject_name)}</div>
+                    <div class="subject-card-meta">
+                        <span>⏱ ${subj.weekly_hours} hrs/wk</span>
+                        <span>•</span>
+                        <span>📖 ${subj.active_lessons_count} Active Lessons</span>
+                    </div>
+                </div>
+            `).join('');
+
+            // Automatically select first subject or currently active if exists in list
+            const hasActive = this.curriculumState.subjects.some(s => s.subject_id === this.curriculumState.activeSubjectId);
+            const targetSubjectId = hasActive ? this.curriculumState.activeSubjectId : this.curriculumState.subjects[0].subject_id;
+            await this.selectCurriculumSubject(targetSubjectId);
+        } catch (err) {
+            subjectsContainer.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        }
+    },
+
+    async selectCurriculumSubject(subjectId) {
+        this.curriculumState.activeSubjectId = subjectId;
+
+        // Highlight active subject card
+        document.querySelectorAll('.subject-select-card').forEach(card => card.classList.remove('active'));
+        const activeCard = document.getElementById(`subject-card-${subjectId}`);
+        if (activeCard) activeCard.classList.add('active');
+
+        await this.loadCurriculumLessons();
+    },
+
+    async loadCurriculumLessons() {
+        const subjectId = this.curriculumState.activeSubjectId;
+        const lessonsContainer = document.getElementById('curriculum-lessons-container');
+        const titleElem = document.getElementById('curriculum-active-subject-title');
+        const subtitleElem = document.getElementById('curriculum-active-subject-subtitle');
+
+        if (!subjectId || !lessonsContainer) return;
+
+        const currentSubject = this.curriculumState.subjects.find(s => s.subject_id === subjectId);
+        if (currentSubject) {
+            if (titleElem) titleElem.innerText = `${currentSubject.subject_name} (${currentSubject.subject_code})`;
+            if (subtitleElem) subtitleElem.innerText = `${currentSubject.class_name} • ${currentSubject.weekly_hours} hrs/week • Language: ${currentSubject.language_of_instruction || 'English'}`;
+        }
+
+        lessonsContainer.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-muted);">Loading sequenced lessons...</div>';
+
+        try {
+            const status = this.curriculumState.statusFilter || 'active';
+            const search = this.curriculumState.searchTerm || '';
+            const res = await API.get(`/api/curriculum/subjects/${subjectId}/lessons?status=${status}&search=${encodeURIComponent(search)}`);
+            const data = res.data || {};
+            this.curriculumState.lessons = data.lessons || [];
+
+            if (this.curriculumState.lessons.length === 0) {
+                lessonsContainer.innerHTML = `
+                    <div style="text-align:center; padding:3rem 1rem; color:var(--text-muted);">
+                        <div style="font-size:2rem; margin-bottom:8px;">📖</div>
+                        <p style="font-weight:600;">No lessons found for this subject.</p>
+                        <p style="font-size:0.85rem; margin-top:4px;">${search ? 'Try adjusting your search criteria.' : 'Curriculum lessons will appear here once authored.'}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const role = Auth.getRole();
+            const isStaff = ['curriculum_officer', 'administrator'].includes(role);
+            const total = this.curriculumState.lessons.length;
+
+            lessonsContainer.innerHTML = this.curriculumState.lessons.map((lesson, idx) => `
+                <div class="lesson-item-card ${lesson.status === 'retired' ? 'retired' : ''}" id="lesson-card-${lesson.lesson_id}">
+                    <div class="lesson-seq-indicator">#${lesson.sequence_number}</div>
+                    <div class="lesson-body">
+                        <div class="lesson-top-row">
+                            <h4 class="lesson-main-title">${this.escapeHtml(lesson.lesson_title)}</h4>
+                            <div class="lesson-badge-group">
+                                <span class="badge-duration">⏱ ${lesson.duration_minutes} mins</span>
+                                <span class="badge-version">🏷 ${this.escapeHtml(lesson.curriculum_version || 'NCDC-2026.1')}</span>
+                                ${lesson.status === 'retired' ? '<span class="badge badge-inactive">Retired</span>' : '<span class="badge badge-active">Active</span>'}
+                            </div>
+                        </div>
+                        <div class="lesson-objectives-box">
+                            <strong>🎯 Learning Objectives & Competencies:</strong>
+                            <p style="margin-top:4px; white-space:pre-line;">${this.escapeHtml(lesson.lesson_objectives || 'Standard NCDC primary competencies and lesson milestones.')}</p>
+                        </div>
+                        ${isStaff ? `
+                            <div class="lesson-actions-bar">
+                                <div class="reorder-btn-group">
+                                    <button class="reorder-btn" title="Move Up" ${idx === 0 ? 'disabled' : ''} onclick="App.handleReorderLesson(${lesson.subject_id}, ${lesson.lesson_id}, 'up')">▲ Up</button>
+                                    <button class="reorder-btn" title="Move Down" ${idx === total - 1 ? 'disabled' : ''} onclick="App.handleReorderLesson(${lesson.subject_id}, ${lesson.lesson_id}, 'down')">▼ Down</button>
+                                </div>
+                                <button class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:0.75rem;" onclick="App.openEditLessonModal(${lesson.lesson_id})">✏️ Edit</button>
+                                <button class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:0.75rem; color:${lesson.status === 'active' ? 'var(--danger)' : 'var(--success)'};" onclick="App.handleRetireLesson(${lesson.lesson_id}, '${lesson.status}')">
+                                    ${lesson.status === 'active' ? '🚫 Retire' : '✅ Reactivate'}
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+        } catch (err) {
+            lessonsContainer.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        }
+    },
+
+    handleCurriculumSearch(query) {
+        this.curriculumState.searchTerm = (query || '').trim();
+        clearTimeout(this._searchDebounce);
+        this._searchDebounce = setTimeout(() => {
+            this.loadCurriculumLessons();
+        }, 250);
+    },
+
+    handleCurriculumStatusChange(status) {
+        this.curriculumState.statusFilter = status;
+        this.loadCurriculumLessons();
+    },
+
+    // -------------------------------------------------------------------------
+    // Officer Authoring Modals & Actions
+    // -------------------------------------------------------------------------
+
+    renderCurriculumModalsHtml() {
+        return `
+            <!-- Create Subject Modal -->
+            <div id="create-subject-modal" class="modal-overlay">
+                <div class="modal-card">
+                    <div class="modal-header">
+                        <h3>➕ Add New Curriculum Subject</h3>
+                        <button class="modal-close" onclick="App.closeCreateSubjectModal()">×</button>
+                    </div>
+                    <form onsubmit="App.handleCreateSubject(event)">
+                        <div id="create-subject-alert"></div>
+                        <div class="form-group">
+                            <label>Primary Class Level *</label>
+                            <select id="new-subj-class-id" class="form-control" required>
+                                ${this.curriculumState.classes.map(c => `
+                                    <option value="${c.class_id}" ${c.class_id === this.curriculumState.activeClassId ? 'selected' : ''}>${this.escapeHtml(c.class_name)} (${c.class_code})</option>
+                                `).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Subject Name *</label>
+                            <input type="text" id="new-subj-name" class="form-control" placeholder="e.g. Mathematics" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Subject Code *</label>
+                            <input type="text" id="new-subj-code" class="form-control" placeholder="e.g. P1-MTC" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Weekly Allocated Hours</label>
+                            <input type="number" step="0.5" id="new-subj-hours" class="form-control" value="5.0" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Language of Instruction</label>
+                            <input type="text" id="new-subj-lang" class="form-control" value="English" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Description & Scope</label>
+                            <textarea id="new-subj-desc" class="form-control" rows="2" placeholder="Uganda NCDC Primary Curriculum standard unit."></textarea>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="App.closeCreateSubjectModal()">Cancel</button>
+                            <button type="submit" id="btn-save-subject" class="btn btn-primary">Create Subject</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Edit Subject Modal -->
+            <div id="edit-subject-modal" class="modal-overlay">
+                <div class="modal-card">
+                    <div class="modal-header">
+                        <h3>✏️ Edit Curriculum Subject</h3>
+                        <button class="modal-close" onclick="App.closeEditSubjectModal()">×</button>
+                    </div>
+                    <form onsubmit="App.handleEditSubject(event)">
+                        <input type="hidden" id="edit-subj-id">
+                        <div id="edit-subject-alert"></div>
+                        <div class="form-group">
+                            <label>Subject Name *</label>
+                            <input type="text" id="edit-subj-name" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Weekly Allocated Hours</label>
+                            <input type="number" step="0.5" id="edit-subj-hours" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Language of Instruction</label>
+                            <input type="text" id="edit-subj-lang" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea id="edit-subj-desc" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="App.closeEditSubjectModal()">Cancel</button>
+                            <button type="submit" id="btn-update-subject" class="btn btn-primary">Update Subject</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Create Lesson Modal -->
+            <div id="create-lesson-modal" class="modal-overlay">
+                <div class="modal-card">
+                    <div class="modal-header">
+                        <h3>➕ Add New Sequenced Lesson</h3>
+                        <button class="modal-close" onclick="App.closeCreateLessonModal()">×</button>
+                    </div>
+                    <form onsubmit="App.handleCreateLesson(event)">
+                        <div id="create-lesson-alert"></div>
+                        <div class="form-group">
+                            <label>Target Subject *</label>
+                            <select id="new-lesson-subject-id" class="form-control" required onchange="App.handleNewLessonSubjectChange(this.value)">
+                                ${this.curriculumState.subjects.map(s => `
+                                    <option value="${s.subject_id}" data-class-id="${s.class_id}" ${s.subject_id === this.curriculumState.activeSubjectId ? 'selected' : ''}>
+                                        ${this.escapeHtml(s.subject_name)} (${s.subject_code})
+                                    </option>
+                                `).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Lesson Title *</label>
+                            <input type="text" id="new-lesson-title" class="form-control" placeholder="e.g. Introduction to Place Values" required>
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <div class="form-group">
+                                <label>Duration (Minutes) *</label>
+                                <input type="number" id="new-lesson-duration" class="form-control" value="40" min="10" max="180" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Curriculum Version *</label>
+                                <input type="text" id="new-lesson-version" class="form-control" value="NCDC-2026.1" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Learning Objectives & Competencies *</label>
+                            <textarea id="new-lesson-objectives" class="form-control" rows="3" placeholder="Define learner competencies and practical exercises..." required></textarea>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="App.closeCreateLessonModal()">Cancel</button>
+                            <button type="submit" id="btn-save-lesson" class="btn btn-primary">Save Lesson</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Edit Lesson Modal -->
+            <div id="edit-lesson-modal" class="modal-overlay">
+                <div class="modal-card">
+                    <div class="modal-header">
+                        <h3>✏️ Edit Curriculum Lesson</h3>
+                        <button class="modal-close" onclick="App.closeEditLessonModal()">×</button>
+                    </div>
+                    <form onsubmit="App.handleEditLesson(event)">
+                        <input type="hidden" id="edit-lesson-id">
+                        <div id="edit-lesson-alert"></div>
+                        <div class="form-group">
+                            <label>Lesson Title *</label>
+                            <input type="text" id="edit-lesson-title" class="form-control" required>
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <div class="form-group">
+                                <label>Duration (Minutes) *</label>
+                                <input type="number" id="edit-lesson-duration" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Curriculum Version *</label>
+                                <input type="text" id="edit-lesson-version" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Learning Objectives & Competencies *</label>
+                            <textarea id="edit-lesson-objectives" class="form-control" rows="3" required></textarea>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="App.closeEditLessonModal()">Cancel</button>
+                            <button type="submit" id="btn-update-lesson" class="btn btn-primary">Update Lesson</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+    },
+
+    openCreateSubjectModal() {
+        const modal = document.getElementById('create-subject-modal');
+        if (modal) {
+            document.getElementById('create-subject-alert').innerHTML = '';
+            document.getElementById('new-subj-name').value = '';
+            document.getElementById('new-subj-code').value = '';
+            document.getElementById('new-subj-desc').value = '';
+            modal.classList.add('active');
+        }
+    },
+
+    closeCreateSubjectModal() {
+        document.getElementById('create-subject-modal')?.classList.remove('active');
+    },
+
+    async handleCreateSubject(e) {
+        e.preventDefault();
+        const alertBox = document.getElementById('create-subject-alert');
+        const submitBtn = document.getElementById('btn-save-subject');
+
+        const payload = {
+            class_id: parseInt(document.getElementById('new-subj-class-id').value, 10),
+            subject_name: document.getElementById('new-subj-name').value.trim(),
+            subject_code: document.getElementById('new-subj-code').value.trim(),
+            weekly_hours: parseFloat(document.getElementById('new-subj-hours').value) || 5.0,
+            language_of_instruction: document.getElementById('new-subj-lang').value.trim() || 'English',
+            description: document.getElementById('new-subj-desc').value.trim()
+        };
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Creating...';
+        alertBox.innerHTML = '';
+
+        try {
+            await API.post('/api/officer/subjects', payload);
+            this.closeCreateSubjectModal();
+            await this.loadCurriculumClasses();
+            alert('Curriculum Subject created successfully.');
+        } catch (err) {
+            alertBox.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Create Subject';
+        }
+    },
+
+    async openEditSubjectModal(subjectId) {
+        const modal = document.getElementById('edit-subject-modal');
+        const alertBox = document.getElementById('edit-subject-alert');
+        if (!modal) return;
+
+        alertBox.innerHTML = '';
+        try {
+            const res = await API.get(`/api/curriculum/subjects/${subjectId}`);
+            const subj = res.data;
+            document.getElementById('edit-subj-id').value = subj.subject_id;
+            document.getElementById('edit-subj-name').value = subj.subject_name;
+            document.getElementById('edit-subj-hours').value = subj.weekly_hours;
+            document.getElementById('edit-subj-lang').value = subj.language_of_instruction || 'English';
+            document.getElementById('edit-subj-desc').value = subj.description || '';
+            modal.classList.add('active');
+        } catch (err) {
+            alert('Failed to load subject details: ' + err.message);
+        }
+    },
+
+    closeEditSubjectModal() {
+        document.getElementById('edit-subject-modal')?.classList.remove('active');
+    },
+
+    async handleEditSubject(e) {
+        e.preventDefault();
+        const alertBox = document.getElementById('edit-subject-alert');
+        const submitBtn = document.getElementById('btn-update-subject');
+        const subjectId = document.getElementById('edit-subj-id').value;
+
+        const payload = {
+            subject_name: document.getElementById('edit-subj-name').value.trim(),
+            weekly_hours: parseFloat(document.getElementById('edit-subj-hours').value) || 5.0,
+            language_of_instruction: document.getElementById('edit-subj-lang').value.trim() || 'English',
+            description: document.getElementById('edit-subj-desc').value.trim()
+        };
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Updating...';
+        alertBox.innerHTML = '';
+
+        try {
+            await API.put(`/api/officer/subjects/${subjectId}`, payload);
+            this.closeEditSubjectModal();
+            await this.selectCurriculumClass(this.curriculumState.activeClassId);
+            alert('Subject updated successfully.');
+        } catch (err) {
+            alertBox.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Update Subject';
+        }
+    },
+
+    openCreateLessonModal() {
+        const modal = document.getElementById('create-lesson-modal');
+        if (!modal) return;
+
+        document.getElementById('create-lesson-alert').innerHTML = '';
+        document.getElementById('new-lesson-title').value = '';
+        document.getElementById('new-lesson-objectives').value = '';
+        document.getElementById('new-lesson-duration').value = '40';
+        document.getElementById('new-lesson-version').value = 'NCDC-2026.1';
+
+        // Ensure subject selector is populated
+        const subjSelect = document.getElementById('new-lesson-subject-id');
+        if (subjSelect && this.curriculumState.subjects.length > 0) {
+            subjSelect.innerHTML = this.curriculumState.subjects.map(s => `
+                <option value="${s.subject_id}" data-class-id="${s.class_id}" ${s.subject_id === this.curriculumState.activeSubjectId ? 'selected' : ''}>
+                    ${this.escapeHtml(s.subject_name)} (${s.subject_code})
+                </option>
+            `).join('');
+        }
+
+        modal.classList.add('active');
+    },
+
+    closeCreateLessonModal() {
+        document.getElementById('create-lesson-modal')?.classList.remove('active');
+    },
+
+    handleNewLessonSubjectChange(subjectId) {
+        // Keeps state synchronized
+    },
+
+    async handleCreateLesson(e) {
+        e.preventDefault();
+        const alertBox = document.getElementById('create-lesson-alert');
+        const submitBtn = document.getElementById('btn-save-lesson');
+
+        const subjSelect = document.getElementById('new-lesson-subject-id');
+        const selectedOption = subjSelect.options[subjSelect.selectedIndex];
+        const subjectId = parseInt(subjSelect.value, 10);
+        const classId = parseInt(selectedOption.getAttribute('data-class-id') || this.curriculumState.activeClassId, 10);
+
+        const payload = {
+            subject_id: subjectId,
+            class_id: classId,
+            lesson_title: document.getElementById('new-lesson-title').value.trim(),
+            lesson_objectives: document.getElementById('new-lesson-objectives').value.trim(),
+            duration_minutes: parseInt(document.getElementById('new-lesson-duration').value, 10) || 40,
+            curriculum_version: document.getElementById('new-lesson-version').value.trim() || 'NCDC-2026.1',
+            status: 'active'
+        };
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Saving...';
+        alertBox.innerHTML = '';
+
+        try {
+            await API.post('/api/officer/lessons', payload);
+            this.closeCreateLessonModal();
+            await this.loadCurriculumLessons();
+            alert('Curriculum Lesson added successfully.');
+        } catch (err) {
+            alertBox.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Save Lesson';
+        }
+    },
+
+    async openEditLessonModal(lessonId) {
+        const modal = document.getElementById('edit-lesson-modal');
+        const alertBox = document.getElementById('edit-lesson-alert');
+        if (!modal) return;
+
+        alertBox.innerHTML = '';
+        try {
+            const res = await API.get(`/api/curriculum/lessons/${lessonId}`);
+            const lesson = res.data;
+            document.getElementById('edit-lesson-id').value = lesson.lesson_id;
+            document.getElementById('edit-lesson-title').value = lesson.lesson_title;
+            document.getElementById('edit-lesson-duration').value = lesson.duration_minutes;
+            document.getElementById('edit-lesson-version').value = lesson.curriculum_version || 'NCDC-2026.1';
+            document.getElementById('edit-lesson-objectives').value = lesson.lesson_objectives || '';
+            modal.classList.add('active');
+        } catch (err) {
+            alert('Failed to load lesson details: ' + err.message);
+        }
+    },
+
+    closeEditLessonModal() {
+        document.getElementById('edit-lesson-modal')?.classList.remove('active');
+    },
+
+    async handleEditLesson(e) {
+        e.preventDefault();
+        const alertBox = document.getElementById('edit-lesson-alert');
+        const submitBtn = document.getElementById('btn-update-lesson');
+        const lessonId = document.getElementById('edit-lesson-id').value;
+
+        const payload = {
+            lesson_title: document.getElementById('edit-lesson-title').value.trim(),
+            duration_minutes: parseInt(document.getElementById('edit-lesson-duration').value, 10) || 40,
+            curriculum_version: document.getElementById('edit-lesson-version').value.trim() || 'NCDC-2026.1',
+            lesson_objectives: document.getElementById('edit-lesson-objectives').value.trim()
+        };
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Updating...';
+        alertBox.innerHTML = '';
+
+        try {
+            await API.put(`/api/officer/lessons/${lessonId}`, payload);
+            this.closeEditLessonModal();
+            await this.loadCurriculumLessons();
+            alert('Curriculum Lesson updated successfully.');
+        } catch (err) {
+            alertBox.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Update Lesson';
+        }
+    },
+
+    async handleRetireLesson(lessonId, currentStatus) {
+        const nextStatus = currentStatus === 'active' ? 'retired' : 'active';
+        const actionLabel = currentStatus === 'active' ? 'retire' : 'reactivate';
+
+        if (!confirm(`Are you sure you want to ${actionLabel} this lesson?`)) {
+            return;
+        }
+
+        try {
+            await API.post(`/api/officer/lessons/${lessonId}/retire`, { status: nextStatus });
+            await this.loadCurriculumLessons();
+        } catch (err) {
+            alert('Failed to update lesson status: ' + err.message);
+        }
+    },
+
+    async handleReorderLesson(subjectId, lessonId, direction) {
+        const lessons = this.curriculumState.lessons;
+        const currIdx = lessons.findIndex(l => l.lesson_id === lessonId);
+        if (currIdx === -1) return;
+
+        const targetIdx = direction === 'up' ? currIdx - 1 : currIdx + 1;
+        if (targetIdx < 0 || targetIdx >= lessons.length) return;
+
+        // Clone array and swap
+        const newLessonList = [...lessons];
+        const temp = newLessonList[currIdx];
+        newLessonList[currIdx] = newLessonList[targetIdx];
+        newLessonList[targetIdx] = temp;
+
+        const orderedIds = newLessonList.map(l => l.lesson_id);
+
+        try {
+            await API.post('/api/officer/lessons/reorder', {
+                subject_id: subjectId,
+                lesson_ids: orderedIds
+            });
+            await this.loadCurriculumLessons();
+        } catch (err) {
+            alert('Failed to reorder lessons: ' + err.message);
+        }
+    },
+
     renderGenericDashboard(container, hash) {
         const cleanHash = (hash || '').replace('#', '');
         const defaultDash = this.getDefaultDashboard();
         
         const moduleMap = {
             'parent-learners': { title: 'Learner Management', sprint: 'Sprint 2 (Module 02)', desc: 'Register home learners, enroll in P1–P7 classes, and manage active subjects.' },
+            'curriculum-explorer': { title: 'Curriculum & Lessons Explorer', sprint: 'Sprint 3 (Module 03)', desc: 'Uganda NCDC Primary Syllabus (P1–P7) subjects, competency frameworks, and sequenced lessons.' },
             'parent-guides': { title: 'Parental Guides', sprint: 'Sprint 5 (Module 05)', desc: 'Step-by-step teaching guides and suggested weekly homeschooling schedules.' },
             'parent-assessments': { title: 'Assessments & Quizzes', sprint: 'Sprint 6 (Module 06)', desc: 'Track formative and summative assessment attempts, auto-scores, and remarks.' },
             'parent-sync': { title: 'Offline & Sync Status', sprint: 'Sprint 7 (Module 07)', desc: 'Inspect local IndexedDB synchronization queue and device connection status.' },

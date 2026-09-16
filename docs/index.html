@@ -375,7 +375,8 @@
             <div class="nav-group-title">Module Documentation</div>
             <a href="#mod-01" class="nav-link" onclick="Docs.navigate('mod-01')">✅ 01. Auth & RBAC</a>
             <a href="#mod-02" class="nav-link" onclick="Docs.navigate('mod-02')">✅ 02. Parents & Learners</a>
-            <a href="#mod-roadmap" class="nav-link" onclick="Docs.navigate('mod-roadmap')">⏳ 03–13. Sprints Roadmap</a>
+            <a href="#mod-03" class="nav-link" onclick="Docs.navigate('mod-03')">✅ 03. Curriculum (P1–P7)</a>
+            <a href="#mod-roadmap" class="nav-link" onclick="Docs.navigate('mod-roadmap')">⏳ 04–13. Sprints Roadmap</a>
             
             <div class="nav-group-title">Operations</div>
             <a href="#credentials" class="nav-link" onclick="Docs.navigate('credentials')">🔑 Demo Credentials</a>
@@ -772,8 +773,75 @@
                         <tr>
                             <td><span class="badge badge-method">PUT</span></td>
                             <td><code>/api/parent/profile</code></td>
-                            <td>Update parent homeschooling demographics and household details</td>
+                            <td>Update parent homeschooling household profile</td>
                             <td><code>parent</code></td>
+                        </tr>
+                        <!-- Module 03: Curriculum Management (P1–P7) -->
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/curriculum/classes</code></td>
+                            <td>List all primary school classes (P1–P7) with subject counts, lesson counts, and weekly hours</td>
+                            <td>Authenticated (All roles)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/curriculum/classes/{id}/subjects</code></td>
+                            <td>List active curriculum subjects under a primary class with lesson counts</td>
+                            <td>Authenticated (All roles)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/curriculum/subjects/{id}</code></td>
+                            <td>Retrieve single subject details, weekly hours, and description</td>
+                            <td>Authenticated (All roles)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/curriculum/subjects/{id}/lessons</code></td>
+                            <td>Retrieve ordered, sequenced lessons for a subject with search query & status filters</td>
+                            <td>Authenticated (All roles)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/curriculum/lessons/{id}</code></td>
+                            <td>Retrieve single lesson with duration, objectives, and NCDC syllabus version</td>
+                            <td>Authenticated (All roles)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/subjects</code></td>
+                            <td>Create new curriculum subject with class allocation, weekly hours, and language</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">PUT</span></td>
+                            <td><code>/api/officer/subjects/{id}</code></td>
+                            <td>Update curriculum subject metadata, hours, and description</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/lessons</code></td>
+                            <td>Create sequenced lesson with auto-sequence numbering and class consistency check</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">PUT</span></td>
+                            <td><code>/api/officer/lessons/{id}</code></td>
+                            <td>Update lesson title, duration minutes, version tag, and competencies</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/lessons/{id}/retire</code></td>
+                            <td>Toggle soft-retirement status of a lesson (active / retired)</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/lessons/reorder</code></td>
+                            <td>Batch reorder sequence numbers for all lessons within a subject</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
                         </tr>
                     </tbody>
                 </table>
@@ -785,28 +853,16 @@
             <h1 class="doc-title">Module 01: Authentication, Users & RBAC</h1>
             <p class="doc-subtitle">Status: <span class="badge badge-success">Completed & Tested</span></p>
 
-            <h2 class="section-heading">Implementation Summary</h2>
+            <h2 class="section-heading">1. Implementation Summary</h2>
             <ul>
-                <li><strong>Multi-role Login & Routing:</strong> Authenticates all 5 roles (Administrator, Curriculum Officer, Teacher, Parent, Learner) and routes to their dedicated dashboards.</li>
-                <li><strong>Unified Full Name & Profile Management:</strong> Direct <code>full_name</code> column in <code>users</code> table synchronized with actor profile tables (parents, teachers, officers, learners) and editable live from the Profile view.</li>
-                <li><strong>Administrative User Editing & Overrides:</strong> Full administrative privileges to inspect user profiles, edit full names, emails, contact details, reset passwords immediately, and unlock locked accounts.</li>
-                <li><strong>Avatar & Photo Uploads:</strong> Multi-part file upload (JPG, PNG, WEBP, GIF $\le 4$MB) with server-side MIME verification and fallback to dynamic UI avatars.</li>
-                <li><strong>Role Badge Styling:</strong> Color-coded visual tags for distinct role recognition across user pills, dropdown headers, and tables.</li>
-                <li><strong>Parent Self-Registration:</strong> Transaction-safe creation of user credentials and linked parent profile.</li>
-                <li><strong>Security Hardening:</strong>
-                    <ul>
-                        <li>Bcrypt password hashing with salt generation.</li>
-                        <li>Account lockout after 5 consecutive failed attempts (15 minutes).</li>
-                        <li>IP Rate-limiting on authentication routes.</li>
-                        <li>Single-use, 1-hour time-expiring reset tokens.</li>
-                    </ul>
-                </li>
-                <li><strong>Client SPA Route Guards:</strong> Automatically redirects authenticated users to their dashboards and shields private screens.</li>
-                <li><strong>Audit Trail Logging:</strong> Logs every login, logout, password change, profile update, admin user edit, admin password reset, and status alteration.</li>
+                <li><strong>Role-Based Access Control (RBAC):</strong> Strict 5-role hierarchy (<code>administrator</code>, <code>curriculum_officer</code>, <code>teacher</code>, <code>parent</code>, <code>learner</code>) enforced at both API route middleware and UI rendering layers.</li>
+                <li><strong>Session & Security Governance:</strong> Password hashing via <code>PASSWORD_BCRYPT</code> (cost factor 12), time-limited single-use password reset tokens (60 min expiry), and progressive account lockout after 5 consecutive failed login attempts.</li>
+                <li><strong>Administrative User Management:</strong> Dedicated administrative control center supporting account creation, status toggles (active, suspended, inactive), role changes, and immediate password reset overrides with audit logging.</li>
+                <li><strong>Immutable Audit Logging:</strong> Structured security audit trail capturing user IDs, target IDs, action codes, IP addresses, and before/after metadata snapshots for governance compliance.</li>
             </ul>
 
-            <h2 class="section-heading">Verification & Test Suite</h2>
-            <p>Run the automated test runner to verify all 19 foundation, authentication, and administrative test assertions:</p>
+            <h2 class="section-heading">2. Verification & Automated Test Suite</h2>
+            <p>Run the Module 01 automated test runner (19/19 tests passing):</p>
             <pre><code>php tests/test_sprint0_sprint1.php</code></pre>
         </section>
 
@@ -827,12 +883,161 @@
                 <li><strong>Optional Standalone Student Login:</strong> Parents can provision independent login credentials (role: <code>learner</code>) for upper primary children (P4–P7) to complete quizzes and read lessons independently.</li>
                 <li><strong>Multi-Tenant Data Isolation:</strong> Parents are strictly restricted to their own children; teachers access assigned cohorts; administrators maintain global audit oversight.</li>
                 <li><strong>Parent Extended Profile:</strong> Management of Ugandan National ID (NIN), District, Household Size, and Homeschooling Experience level.</li>
-                <li><strong>Offline Caching (PWA):</strong> Service worker shell updated to <code>tmhis-shell-v12</code> ensuring learner profiles, photos, and timetables remain accessible offline.</li>
             </ul>
 
             <h2 class="section-heading">2. Verification & Automated Test Suite</h2>
             <p>Run the Module 02 automated test runner (15/15 tests passing):</p>
             <pre><code>php tests/test_sprint2_learners.php</code></pre>
+        </section>
+
+        <!-- SECTION: MODULE 03 -->
+        <section id="sec-mod-03" class="doc-section">
+            <h1 class="doc-title">Module 03: Curriculum Management (P1–P7)</h1>
+            <p class="doc-subtitle">Status: <span class="badge badge-success">Completed & Verified (15/15 Tests Passing)</span></p>
+
+            <div class="callout" style="margin: 1.25rem 0;">
+                <div class="callout-title">🇺🇬 Uganda National Curriculum Alignment</div>
+                <p>This module implements the <strong>National Curriculum Development Centre (NCDC)</strong> and <strong>Ministry of Education and Sports (MoES)</strong> Primary School Competency-Based Curriculum framework, spanning all 7 primary school grades (Primary One through Primary Seven).</p>
+            </div>
+
+            <h2 class="section-heading">1. Pedagogical Cycle & Curriculum Architecture</h2>
+            <p>The TMHIS curriculum engine models the distinct pedagogical divisions of the Ugandan primary education cycle:</p>
+            
+            <div class="table-responsive" style="margin: 1rem 0;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Phase</th>
+                            <th>Class Levels</th>
+                            <th>Age Guideline</th>
+                            <th>Instruction Language</th>
+                            <th>Pedagogical Focus & Core Subjects</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Lower Primary (Thematic)</strong></td>
+                            <td>Primary 1 – Primary 3 (P1–P3)</td>
+                            <td>6 – 9 years</td>
+                            <td>Local Language / English</td>
+                            <td>Thematic learning (School, Home, Community, Health, Weather), Literacy 1 & 2, Mathematics & Numeracy, Local Language (e.g. Luganda), Religious Education (CRE/IRE), and CAPE.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Transition Year</strong></td>
+                            <td>Primary 4 (P4)</td>
+                            <td>9 – 10 years</td>
+                            <td>English Language</td>
+                            <td>Transition from thematic instruction to structured subject areas: English, Mathematics, Integrated Science, Social Studies (SST), Religious Education, and Kiswahili.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Upper Primary (Subject-Based)</strong></td>
+                            <td>Primary 5 – Primary 7 (P5–P7)</td>
+                            <td>10 – 13+ years</td>
+                            <td>English Language</td>
+                            <td>Advanced subject competencies preparing for national Primary Leaving Examinations (PLE): English, Mathematics, Integrated Science, Social Studies, CRE/IRE, and Kiswahili.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 class="section-heading">2. Implemented Features & Technical Architecture</h2>
+            <ul>
+                <li><strong>NCDC Syllabus Seeding (Version <code>NCDC-2026.1</code>):</strong> Seeded <strong>224 active, sequenced lessons</strong> across 53+ subjects for all 7 primary classes, complete with duration, version identifiers, and competency-based milestone statements.</li>
+                <li><strong>Strict Class-Subject Consistency Guard:</strong> Database and API enforcement guarantees that every lesson belongs strictly to the same class level as its parent subject (<code>lesson.class_id === subject.class_id</code>), preventing cross-level anomalies.</li>
+                <li><strong>Learner Curriculum Boundary Isolation:</strong> Strict boundary isolation ensuring that learners enrolled in a specific class (e.g., P4) cannot access or leak lessons and quizzes from other classes (e.g., P5), verified by automated security tests.</li>
+                <li><strong>Collision-Free Sequence Reordering:</strong> Two-phase batch sequence reordering with offset shifting (`UPDATE ... SET sequence_number = sequence_number + 100000`), guaranteeing zero unique constraint collisions on <code>(subject_id, sequence_number)</code> during lesson moves.</li>
+                <li><strong>Soft-Retirement & Historical Data Preservation:</strong> Deprecating outdated or superseded lessons marks them as <code>retired</code> while preserving learner historical quiz scores, progress logs, and audit trails.</li>
+                <li><strong>Officer & Administrator Authoring Suite:</strong> Intuitive authoring modals in the PWA enabling curriculum officers to create/update subjects, add/edit sequenced lessons, modify durations, and reorder teaching pathways.</li>
+                <li><strong>Real-Time PWA Curriculum Explorer:</strong> User-friendly interface with class-level tabs (P1–P7), subject cards with weekly hours, sequenced lesson timelines, and instant keyword searching across topics and competencies.</li>
+            </ul>
+
+            <h2 class="section-heading">3. Module 03 REST Endpoints Reference</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Endpoint Route</th>
+                            <th>Purpose & Description</th>
+                            <th>Access Control (RBAC)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/curriculum/classes</code></td>
+                            <td>List all primary classes (P1–P7) with subject counts, lesson counts, and total weekly hours</td>
+                            <td>Authenticated (All roles)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/curriculum/classes/{id}/subjects</code></td>
+                            <td>List active curriculum subjects under a primary class with lesson counts</td>
+                            <td>Authenticated (All roles)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/curriculum/subjects/{id}</code></td>
+                            <td>Retrieve metadata, weekly hours, and description for a single subject</td>
+                            <td>Authenticated (All roles)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/curriculum/subjects/{id}/lessons</code></td>
+                            <td>Retrieve ordered, sequenced lessons with live search queries & status filters</td>
+                            <td>Authenticated (All roles)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/curriculum/lessons/{id}</code></td>
+                            <td>Retrieve single lesson with duration, objectives, and NCDC syllabus version</td>
+                            <td>Authenticated (All roles)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/subjects</code></td>
+                            <td>Create new curriculum subject with class allocation, weekly hours, and language</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">PUT</span></td>
+                            <td><code>/api/officer/subjects/{id}</code></td>
+                            <td>Update curriculum subject metadata, hours, and description</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/lessons</code></td>
+                            <td>Create sequenced lesson with auto-sequence numbering and class consistency check</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">PUT</span></td>
+                            <td><code>/api/officer/lessons/{id}</code></td>
+                            <td>Update lesson title, duration minutes, version tag, and competencies</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/lessons/{id}/retire</code></td>
+                            <td>Toggle soft-retirement status of a lesson (active / retired)</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/lessons/reorder</code></td>
+                            <td>Batch reorder sequence numbers for all lessons within a subject</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 class="section-heading">4. Verification & Automated Test Suite</h2>
+            <p>Run the Module 03 automated test runner (15/15 tests passing):</p>
+            <pre><code>php tests/test_sprint3_curriculum.php</code></pre>
+            <p style="margin-top: 0.5rem;">To verify the complete regression test suite across Sprint 0, 1, 2, and 3 (49/49 tests passing):</p>
+            <pre><code>php tests/test_sprint0_sprint1.php && php tests/test_sprint2_learners.php && php tests/test_sprint3_curriculum.php</code></pre>
         </section>
 
         <!-- SECTION: ROADMAP -->
@@ -853,7 +1058,7 @@
                         <tr><td>Sprint 0</td><td>Foundation, Architecture, PWA Shell & Error Handling</td><td><span class="badge badge-success">Completed</span></td></tr>
                         <tr><td>Sprint 1</td><td>Module 01: Authentication, Users and RBAC</td><td><span class="badge badge-success">Completed</span></td></tr>
                         <tr><td>Sprint 2</td><td>Module 02: Parent, Family and Learner Management</td><td><span class="badge badge-success">Completed</span></td></tr>
-                        <tr><td>Sprint 3</td><td>Module 03: Curriculum Management (P1–P7)</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 3</td><td>Module 03: Curriculum Management (P1–P7)</td><td><span class="badge badge-success">Completed</span></td></tr>
                         <tr><td>Sprint 4</td><td>Module 04: Learning Materials & Digital Delivery</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
                         <tr><td>Sprint 5</td><td>Module 05: Parental Guides & Flexible Scheduling</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
                         <tr><td>Sprint 6</td><td>Module 06: Online & Offline Assessments & Scoring</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
