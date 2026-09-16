@@ -194,9 +194,18 @@ $teacherUser = [
     'user_id' => 999,
     'role_id' => 3,
     'role_code' => 'teacher',
+    'full_name' => 'Test Teacher Mukasa',
     'email' => 'teacher@test.tmhis.org'
 ];
 AuthMiddleware::setUser($teacherUser);
 $test->assert("AuthMiddleware context correctly stores active session/token user", AuthMiddleware::user()['role_code'] === 'teacher');
+
+// 11. Test Full Name Persistence & Profile Integration
+$adminProfile = AuthMiddleware::fetchUserProfile($adminId, 'administrator');
+$test->assert("Administrator profile returns full_name ('System Administrator')", !empty($adminProfile['full_name']));
+
+$db->prepare("UPDATE users SET full_name = 'Sarah Namubiru' WHERE user_id = :uid")->execute([':uid' => $parentUserId]);
+$userWithFullName = $db->query("SELECT full_name FROM users WHERE user_id = {$parentUserId}")->fetchColumn();
+$test->assert("Users table stores and retrieves full_name directly", $userWithFullName === 'Sarah Namubiru');
 
 $test->summary();

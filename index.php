@@ -61,6 +61,8 @@ $router->get('/api/auth/me', [AuthController::class, 'me']);
 $router->post('/api/auth/forgot-password', [AuthController::class, 'forgotPassword']);
 $router->post('/api/auth/reset-password', [AuthController::class, 'resetPassword']);
 $router->post('/api/auth/change-password', [AuthController::class, 'changePassword']);
+$router->post('/api/auth/update-avatar', [AuthController::class, 'updateAvatar']);
+$router->post('/api/auth/update-profile', [AuthController::class, 'updateProfile']);
 
 // Administration User Management (Module 01 / 12)
 $router->get('/api/admin/users', [AdminUserController::class, 'index']);

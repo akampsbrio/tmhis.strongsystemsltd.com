@@ -31,6 +31,9 @@ const App = {
     init() {
         updateNetworkStatus();
         this.renderHeader();
+        if (Auth.isAuthenticated()) {
+            Auth.refreshProfile().then(() => this.renderHeader());
+        }
         window.addEventListener('hashchange', () => this.route());
         window.addEventListener('click', (e) => {
             const menuWrapper = document.getElementById('user-menu-wrapper');
@@ -47,15 +50,16 @@ const App = {
 
         const user = Auth.getUser();
         if (user && Auth.isAuthenticated()) {
-            const displayName = user.profile?.full_name || user.profile?.first_name || user.username || user.email;
+            const displayName = user.full_name || user.profile?.full_name || user.profile?.first_name || user.username || user.email;
             const avatarUrl = user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2563eb&color=fff&rounded=true&bold=true`;
+            const defaultDash = this.getDefaultDashboard();
 
             headerActions.innerHTML = `
                 <div class="user-menu-wrapper" id="user-menu-wrapper">
-                    <div class="user-menu-btn" onclick="App.toggleUserDropdown(event)" title="${this.escapeHtml(displayName)} (${user.role_code})">
+                    <button class="user-menu-btn" onclick="App.toggleUserDropdown(event)" title="${this.escapeHtml(displayName)} (${user.role_code})" type="button">
                         <img src="${this.escapeHtml(avatarUrl)}" alt="Avatar" class="user-avatar-img" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2563eb&color=fff&rounded=true'">
                         <span class="user-menu-chevron">▼</span>
-                    </div>
+                    </button>
 
                     <div class="user-dropdown-menu" id="user-dropdown-menu">
                         <div class="dropdown-header">
@@ -64,19 +68,81 @@ const App = {
                             <div class="dropdown-user-role">${this.formatRoleBadge(user.role_code)}</div>
                         </div>
                         <div class="dropdown-body">
-                            <button class="dropdown-item" onclick="App.navigate(App.getDefaultDashboard()); App.closeUserDropdown();">
+                            <a href="${defaultDash}" class="dropdown-item" onclick="App.closeUserDropdown()">
                                 <span>📊</span> My Dashboard
-                            </button>
-                            <button class="dropdown-item" onclick="App.navigate('#profile'); App.closeUserDropdown();">
+                            </a>
+                            <a href="#profile" class="dropdown-item" onclick="App.closeUserDropdown()">
                                 <span>👤</span> Profile & Password
-                            </button>
-                            <a href="/docs/" target="_blank" class="dropdown-item" onclick="App.closeUserDropdown();">
+                            </a>
+                            ${user.role_code === 'administrator' ? `
+                                <a href="#admin-users" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>👥</span> User Accounts
+                                </a>
+                                <a href="#admin-audit" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>🛡️</span> Security & Audit Log
+                                </a>
+                                <a href="#admin-system-health" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>🩺</span> System Health
+                                </a>
+                            ` : ''}
+                            ${user.role_code === 'parent' ? `
+                                <a href="#parent-learners" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>🎒</span> My Learners
+                                </a>
+                                <a href="#parent-guides" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📖</span> Parental Guides
+                                </a>
+                                <a href="#parent-assessments" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📝</span> Quizzes & Scores
+                                </a>
+                                <a href="#parent-sync" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>🔄</span> Offline Sync Status
+                                </a>
+                            ` : ''}
+                            ${user.role_code === 'learner' ? `
+                                <a href="#learner-subjects" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📚</span> My Subjects
+                                </a>
+                                <a href="#learner-lessons" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>▶️</span> Continue Lessons
+                                </a>
+                                <a href="#learner-assessments" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>✍️</span> Assessments
+                                </a>
+                                <a href="#learner-downloads" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📥</span> Saved Offline Lessons
+                                </a>
+                            ` : ''}
+                            ${user.role_code === 'teacher' ? `
+                                <a href="#teacher-learners" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>👥</span> Assigned Learners
+                                </a>
+                                <a href="#teacher-assessments" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>✅</span> Review & Grading
+                                </a>
+                                <a href="#teacher-class-summary" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📈</span> Class Progress
+                                </a>
+                            ` : ''}
+                            ${user.role_code === 'curriculum_officer' ? `
+                                <a href="#officer-classes" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📋</span> Curriculum Setup
+                                </a>
+                                <a href="#officer-materials" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📁</span> Learning Materials
+                                </a>
+                                <a href="#officer-compliance" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📊</span> Compliance Reports
+                                </a>
+                            ` : ''}
+                            <div class="dropdown-divider"></div>
+                            <a href="/docs/" target="_blank" class="dropdown-item" onclick="App.closeUserDropdown()">
                                 <span>📖</span> System Documentation
                             </a>
                             <div class="dropdown-divider"></div>
-                            <button class="dropdown-item text-danger" onclick="Auth.logout()">
+                            <a href="javascript:void(0)" class="dropdown-item text-danger" onclick="Auth.logout()">
                                 <span>🚪</span> Sign Out
-                            </button>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -471,28 +537,118 @@ const App = {
         const user = Auth.getUser();
         if (!user) return;
 
-        const displayName = user.profile?.full_name || user.profile?.first_name || user.username || user.email;
+        const displayName = user.full_name || user.profile?.full_name || user.profile?.first_name || user.username || user.email;
         const avatarUrl = user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2563eb&color=fff&rounded=true&bold=true`;
 
         container.innerHTML = `
             <div style="max-width:800px; margin:0 auto;">
-                <div class="card" style="margin-bottom:1.5rem; display:flex; gap:1.5rem; align-items:center;">
-                    <img src="${this.escapeHtml(avatarUrl)}" alt="Profile Photo" style="width:80px; height:80px; border-radius:50%; border:3px solid #e2e8f0; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                <!-- Profile Header Card -->
+                <div class="card" style="margin-bottom:1.5rem; display:flex; gap:1.5rem; align-items:center; flex-wrap:wrap;">
+                    <div style="position:relative;">
+                        <img id="profile-display-avatar" src="${this.escapeHtml(avatarUrl)}" alt="Profile Photo" style="width:85px; height:85px; border-radius:50%; border:3px solid #fff; box-shadow:0 2px 10px rgba(0,0,0,0.15); object-fit:cover;">
+                    </div>
                     <div style="flex:1;">
                         <h2>${this.escapeHtml(displayName)}</h2>
                         <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
                             ${this.formatRoleBadge(user.role_code)}
-                            <span class="status-badge status-${user.account_status}">${user.account_status}</span>
+                            <span class="status-badge status-${user.account_status || 'active'}">${user.account_status || 'active'}</span>
                         </div>
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:0.8rem; font-size:0.9rem; color:var(--text-muted);">
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:8px; margin-top:0.8rem; font-size:0.9rem; color:var(--text-muted);">
+                            <div><strong>Full Name:</strong> ${this.escapeHtml(displayName)}</div>
                             <div><strong>Email:</strong> ${this.escapeHtml(user.email)}</div>
+                            <div><strong>Username:</strong> ${this.escapeHtml(user.username || '—')}</div>
+                            ${user.profile?.phone ? `<div><strong>Phone:</strong> ${this.escapeHtml(user.profile.phone)}</div>` : ''}
+                            ${user.profile?.district ? `<div><strong>District:</strong> ${this.escapeHtml(user.profile.district)}</div>` : ''}
                             <div><strong>Last Login:</strong> ${user.last_login_at || 'Never'}</div>
                         </div>
                     </div>
                 </div>
 
+                <!-- Edit Personal Details Card -->
+                <div class="card" style="margin-bottom:1.5rem;">
+                    <h3>Edit Personal Information</h3>
+                    <p style="color:var(--text-muted); font-size:0.88rem; margin-top:4px;">Update your full name and contact information</p>
+                    <div id="profile-update-alert" style="margin-top:1rem;"></div>
+
+                    <form onsubmit="App.handleUpdateProfile(event)" style="margin-top:1rem;">
+                        <div class="form-group">
+                            <label for="profile-full-name">Full Name *</label>
+                            <input type="text" id="profile-full-name" class="form-control" value="${this.escapeHtml(user.full_name || user.profile?.full_name || '')}" placeholder="Enter your real full name" required>
+                        </div>
+                        ${user.role_code === 'parent' ? `
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="profile-phone">Phone Number</label>
+                                    <input type="tel" id="profile-phone" class="form-control" value="${this.escapeHtml(user.profile?.phone || '')}" placeholder="+256 700 000000">
+                                </div>
+                                <div class="form-group">
+                                    <label for="profile-district">District</label>
+                                    <input type="text" id="profile-district" class="form-control" value="${this.escapeHtml(user.profile?.district || '')}" placeholder="e.g. Kampala">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-address">Physical Address</label>
+                                <input type="text" id="profile-address" class="form-control" value="${this.escapeHtml(user.profile?.physical_address || '')}" placeholder="e.g. Ntinda, Kampala">
+                            </div>
+                        ` : ''}
+                        ${user.role_code === 'teacher' ? `
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="profile-phone">Phone Number</label>
+                                    <input type="tel" id="profile-phone" class="form-control" value="${this.escapeHtml(user.profile?.phone || '')}" placeholder="+256 700 000000">
+                                </div>
+                                <div class="form-group">
+                                    <label for="profile-specialty">Subject Specialty</label>
+                                    <input type="text" id="profile-specialty" class="form-control" value="${this.escapeHtml(user.profile?.subject_specialty || '')}" placeholder="e.g. Mathematics, Science">
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${user.role_code === 'curriculum_officer' ? `
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="profile-phone">Phone Number</label>
+                                    <input type="tel" id="profile-phone" class="form-control" value="${this.escapeHtml(user.profile?.phone || '')}" placeholder="+256 700 000000">
+                                </div>
+                                <div class="form-group">
+                                    <label for="profile-dept">Department</label>
+                                    <input type="text" id="profile-dept" class="form-control" value="${this.escapeHtml(user.profile?.department || '')}" placeholder="e.g. Primary Education">
+                                </div>
+                            </div>
+                        ` : ''}
+                        <button type="submit" class="btn btn-primary" id="btn-save-profile">Save Personal Details</button>
+                    </form>
+                </div>
+
+                <!-- Update Photo Card -->
+                <div class="card" style="margin-bottom:1.5rem;">
+                    <h3>Update Profile Photo</h3>
+                    <p style="color:var(--text-muted); font-size:0.88rem; margin-top:4px;">Upload an image from your device or provide an image URL</p>
+                    <div id="avatar-update-alert" style="margin-top:1rem;"></div>
+
+                    <form onsubmit="App.handleUpdateAvatar(event)" style="margin-top:1rem;">
+                        <div class="form-group">
+                            <label for="avatar-file">Upload Image File (JPG, PNG, WEBP, GIF — Max 4MB)</label>
+                            <input type="file" id="avatar-file" class="form-control" accept="image/*" onchange="App.previewAvatarFile(event)">
+                        </div>
+
+                        <div style="display:flex; align-items:center; margin:1rem 0; gap:12px;">
+                            <div style="flex:1; height:1px; background:var(--border-color);"></div>
+                            <span style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase;">OR ENTER URL</span>
+                            <div style="flex:1; height:1px; background:var(--border-color);"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="avatar-url-input">Image URL</label>
+                            <input type="url" id="avatar-url-input" class="form-control" placeholder="https://example.com/my-photo.jpg" oninput="App.previewAvatarUrl(this.value)">
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" id="btn-save-avatar">Save Profile Photo</button>
+                    </form>
+                </div>
+
+                <!-- Change Password Card -->
                 <div class="card">
-                    <h3>Change Password</h3>
+                    <h3>Security & Change Password</h3>
                     <div id="change-pwd-alert"></div>
                     <form onsubmit="App.handleChangePassword(event)" style="margin-top:1rem;">
                         <div class="form-group">
@@ -501,7 +657,7 @@ const App = {
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="new-pwd">New Password</label>
+                                <label for="new-pwd">New Password (min 8 chars)</label>
                                 <input type="password" id="new-pwd" class="form-control" required minlength="8">
                             </div>
                             <div class="form-group">
@@ -514,6 +670,110 @@ const App = {
                 </div>
             </div>
         `;
+    },
+
+    previewAvatarFile(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = document.getElementById('profile-display-avatar');
+                if (img) img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    },
+
+    previewAvatarUrl(url) {
+        if (url && url.startsWith('http')) {
+            const img = document.getElementById('profile-display-avatar');
+            if (img) img.src = url;
+        }
+    },
+
+    async handleUpdateProfile(e) {
+        e.preventDefault();
+        const alertBox = document.getElementById('profile-update-alert');
+        const submitBtn = document.getElementById('btn-save-profile');
+        
+        const payload = {
+            full_name: document.getElementById('profile-full-name').value.trim(),
+            phone: document.getElementById('profile-phone')?.value.trim() || null,
+            district: document.getElementById('profile-district')?.value.trim() || null,
+            physical_address: document.getElementById('profile-address')?.value.trim() || null,
+            subject_specialty: document.getElementById('profile-specialty')?.value.trim() || null,
+            department: document.getElementById('profile-dept')?.value.trim() || null,
+        };
+
+        alertBox.innerHTML = '';
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Saving...';
+
+        try {
+            const res = await API.post('/api/auth/update-profile', payload);
+            if (res.data?.user) {
+                Auth.setUser(res.data.user);
+            }
+            App.renderHeader();
+            alertBox.innerHTML = `<div class="alert alert-success">${res.message || 'Profile updated successfully!'}</div>`;
+            setTimeout(() => {
+                const content = document.getElementById('app-content');
+                if (content && window.location.hash === '#profile') {
+                    App.renderProfile(content);
+                }
+            }, 800);
+        } catch (err) {
+            alertBox.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Save Personal Details';
+        }
+    },
+
+    async handleUpdateAvatar(e) {
+        e.preventDefault();
+        const alertBox = document.getElementById('avatar-update-alert');
+        const submitBtn = document.getElementById('btn-save-avatar');
+        const fileInput = document.getElementById('avatar-file');
+        const urlInput = document.getElementById('avatar-url-input');
+
+        alertBox.innerHTML = '';
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Saving photo...';
+
+        try {
+            let res;
+            if (fileInput.files.length > 0) {
+                const formData = new FormData();
+                formData.append('avatar_file', fileInput.files[0]);
+                res = await API.upload('/api/auth/update-avatar', formData);
+            } else if (urlInput.value.trim() !== '') {
+                res = await API.post('/api/auth/update-avatar', {
+                    avatar_url: urlInput.value.trim()
+                });
+            } else {
+                throw new Error('Please select an image file or provide a valid image URL.');
+            }
+
+            // Update user in local storage
+            const currentUser = Auth.getUser();
+            if (currentUser && res.data?.avatar_url) {
+                currentUser.avatar_url = res.data.avatar_url;
+                Auth.setUser(currentUser);
+            }
+
+            // Re-render header immediately to show new avatar
+            App.renderHeader();
+
+            alertBox.innerHTML = `<div class="alert alert-success">${res.message || 'Profile photo updated successfully!'}</div>`;
+            if (fileInput) fileInput.value = '';
+            if (urlInput) urlInput.value = '';
+        } catch (err) {
+            alertBox.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Save Profile Photo';
+        }
     },
 
     async handleChangePassword(e) {
@@ -539,31 +799,32 @@ const App = {
 
     renderParentDashboard(container) {
         const user = Auth.getUser();
+        const displayName = user.full_name || user.profile?.full_name || 'Parent';
         container.innerHTML = `
             <div>
-                <h2>Welcome, ${this.escapeHtml(user.profile?.full_name || 'Parent')} 👋</h2>
+                <h2>Welcome, ${this.escapeHtml(displayName)} 👋</h2>
                 <p style="color:var(--text-muted); margin-top:4px;">Home learning facilitator dashboard — Ugandan Syllabus (P1–P7)</p>
 
                 <div class="dashboard-grid">
                     <div class="card">
                         <h3>Learners <span>🎒</span></h3>
                         <p>Register and manage your home learners, class assignments, and subjects.</p>
-                        <button class="btn btn-primary btn-sm" onclick="alert('Module 02: Learner registration & management')">Manage Learners</button>
+                        <a href="#parent-learners" class="btn btn-primary btn-sm">Manage Learners</a>
                     </div>
                     <div class="card">
                         <h3>Parental Guides <span>📖</span></h3>
                         <p>View step-by-step teaching guides, weekly lesson plans, and teaching tips.</p>
-                        <button class="btn btn-secondary btn-sm" onclick="alert('Module 05: Parental guides & scheduling')">View Guides</button>
+                        <a href="#parent-guides" class="btn btn-secondary btn-sm">View Guides</a>
                     </div>
                     <div class="card">
                         <h3>Assessments & Scores <span>📝</span></h3>
                         <p>Track online/offline assessment results, objective scoring, and teacher remarks.</p>
-                        <button class="btn btn-secondary btn-sm" onclick="alert('Module 06: Assessments & scoring')">View Scores</button>
+                        <a href="#parent-assessments" class="btn btn-secondary btn-sm">View Scores</a>
                     </div>
                     <div class="card">
                         <h3>Offline & Sync <span>🔄</span></h3>
                         <p>Inspect downloaded lessons and status of queued offline progress events.</p>
-                        <button class="btn btn-secondary btn-sm" onclick="alert('Module 07: Offline PWA & Sync')">Sync Status</button>
+                        <a href="#parent-sync" class="btn btn-secondary btn-sm">Sync Status</a>
                     </div>
                 </div>
             </div>
@@ -572,31 +833,32 @@ const App = {
 
     renderLearnerDashboard(container) {
         const user = Auth.getUser();
+        const displayName = user.full_name || user.profile?.full_name || user.profile?.first_name || 'Learner';
         container.innerHTML = `
             <div>
-                <h2>Hello, ${this.escapeHtml(user.profile?.first_name || 'Learner')}! 🌟</h2>
+                <h2>Hello, ${this.escapeHtml(displayName)}! 🌟</h2>
                 <p style="color:var(--text-muted); margin-top:4px;">Your personalized learning pathway (P1–P7)</p>
 
                 <div class="dashboard-grid">
                     <div class="card">
                         <h3>My Subjects <span>📚</span></h3>
                         <p>English, Mathematics, Science, Social Studies, and Local Language.</p>
-                        <button class="btn btn-primary btn-sm" onclick="alert('Module 03: Curriculum')">Explore Subjects</button>
+                        <a href="#learner-subjects" class="btn btn-primary btn-sm">Explore Subjects</a>
                     </div>
                     <div class="card">
                         <h3>Continue Lesson <span>▶️</span></h3>
                         <p>Pick up right where you left off in your latest lesson activity.</p>
-                        <button class="btn btn-primary btn-sm" onclick="alert('Module 04: Learning materials')">Resume Learning</button>
+                        <a href="#learner-lessons" class="btn btn-primary btn-sm">Resume Learning</a>
                     </div>
                     <div class="card">
                         <h3>Take Assessment <span>✍️</span></h3>
                         <p>Test your knowledge online or offline and view instant scoring.</p>
-                        <button class="btn btn-secondary btn-sm" onclick="alert('Module 06: Assessments')">My Quizzes</button>
+                        <a href="#learner-assessments" class="btn btn-secondary btn-sm">My Quizzes</a>
                     </div>
                     <div class="card">
                         <h3>Offline Downloads <span>📥</span></h3>
                         <p>Access cached lessons, reading guides, and audios without internet.</p>
-                        <button class="btn btn-secondary btn-sm" onclick="alert('Module 07: Offline cache')">Saved Lessons</button>
+                        <a href="#learner-downloads" class="btn btn-secondary btn-sm">Saved Lessons</a>
                     </div>
                 </div>
             </div>
@@ -605,25 +867,26 @@ const App = {
 
     renderTeacherDashboard(container) {
         const user = Auth.getUser();
+        const displayName = user.full_name || user.profile?.full_name || 'Teacher';
         container.innerHTML = `
             <div>
-                <h2>Teacher Dashboard 👩‍🏫</h2>
+                <h2>Welcome, ${this.escapeHtml(displayName)} 👩‍🏫</h2>
                 <p style="color:var(--text-muted); margin-top:4px;">Supporting teacher oversight, assessments marking, and learner feedback</p>
                 <div class="dashboard-grid">
                     <div class="card">
                         <h3>Assigned Learners <span>👥</span></h3>
                         <p>View home learners assigned to your subject specialty and class levels.</p>
-                        <button class="btn btn-primary btn-sm" onclick="alert('Module 02: Learner tracking')">View Learners</button>
+                        <a href="#teacher-learners" class="btn btn-primary btn-sm">View Learners</a>
                     </div>
                     <div class="card">
                         <h3>Assessment Review <span>✅</span></h3>
                         <p>Review subjective assessment answers, submit manual scores and feedback.</p>
-                        <button class="btn btn-secondary btn-sm" onclick="alert('Module 06: Manual scoring')">Review Submissions</button>
+                        <a href="#teacher-assessments" class="btn btn-secondary btn-sm">Review Submissions</a>
                     </div>
                     <div class="card">
                         <h3>Class Progress <span>📊</span></h3>
                         <p>Monitor completion statistics, average scores, and struggling learners.</p>
-                        <button class="btn btn-secondary btn-sm" onclick="alert('Module 08: Dashboards')">Progress Summary</button>
+                        <a href="#teacher-class-summary" class="btn btn-secondary btn-sm">Progress Summary</a>
                     </div>
                 </div>
             </div>
@@ -632,25 +895,26 @@ const App = {
 
     renderOfficerDashboard(container) {
         const user = Auth.getUser();
+        const displayName = user.full_name || user.profile?.full_name || 'Curriculum Officer';
         container.innerHTML = `
             <div>
-                <h2>Curriculum Officer Portal 🏛️</h2>
+                <h2>Welcome, ${this.escapeHtml(displayName)} 🏛️</h2>
                 <p style="color:var(--text-muted); margin-top:4px;">Uganda National Curriculum Development Center (NCDC / MoES) Oversight</p>
                 <div class="dashboard-grid">
                     <div class="card">
                         <h3>Curriculum Management <span>📋</span></h3>
                         <p>Configure classes P1–P7, subjects, curriculum terms, and standard competencies.</p>
-                        <button class="btn btn-primary btn-sm" onclick="alert('Module 03: Curriculum')">Curriculum Setup</button>
+                        <a href="#officer-classes" class="btn btn-primary btn-sm">Curriculum Setup</a>
                     </div>
                     <div class="card">
                         <h3>Learning Materials Review <span>📁</span></h3>
                         <p>Approve, version, and publish educational notes, worksheets, and media.</p>
-                        <button class="btn btn-secondary btn-sm" onclick="alert('Module 04: Materials approval')">Review Materials</button>
+                        <a href="#officer-materials" class="btn btn-secondary btn-sm">Review Materials</a>
                     </div>
                     <div class="card">
                         <h3>National Compliance <span>📈</span></h3>
                         <p>Inspect national and district coverage compliance against expected thresholds.</p>
-                        <button class="btn btn-secondary btn-sm" onclick="alert('Module 09: Compliance reporting')">Compliance Reports</button>
+                        <a href="#officer-compliance" class="btn btn-secondary btn-sm">Compliance Reports</a>
                     </div>
                 </div>
             </div>
@@ -658,11 +922,13 @@ const App = {
     },
 
     async renderAdminDashboard(container) {
+        const user = Auth.getUser();
+        const displayName = user.full_name || user.profile?.full_name || 'Administrator';
         container.innerHTML = `
             <div>
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                     <div>
-                        <h2>Technical Administration</h2>
+                        <h2>Technical Administration — ${this.escapeHtml(displayName)}</h2>
                         <p style="color:var(--text-muted);">System health, user accounts, and audit monitoring</p>
                     </div>
                     <button class="btn btn-primary" onclick="App.openCreateUserModal()">+ Create User Account</button>
@@ -759,7 +1025,7 @@ const App = {
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Email / Username</th>
+                            <th>Full Name / User Details</th>
                             <th>Role</th>
                             <th>Status</th>
                             <th>Last Login</th>
@@ -768,16 +1034,17 @@ const App = {
                     </thead>
                     <tbody>
                         ${users.map(u => {
-                            const uAvatar = u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.username || u.email)}&background=2563eb&color=fff&rounded=true`;
+                            const uDisplayName = u.full_name || u.username || u.email;
+                            const uAvatar = u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(uDisplayName)}&background=2563eb&color=fff&rounded=true`;
                             return `
                             <tr>
                                 <td>#${u.user_id}</td>
                                 <td>
                                     <div style="display:flex; align-items:center; gap:10px;">
-                                        <img src="${this.escapeHtml(uAvatar)}" alt="Avatar" style="width:34px; height:34px; border-radius:50%; object-fit:cover; border:1px solid #e2e8f0;">
+                                        <img src="${this.escapeHtml(uAvatar)}" alt="Avatar" style="width:36px; height:36px; border-radius:50%; object-fit:cover; border:1px solid #e2e8f0;">
                                         <div>
-                                            <strong>${this.escapeHtml(u.email)}</strong>
-                                            <div style="font-size:0.75rem; color:var(--text-muted);">${this.escapeHtml(u.username || '')}</div>
+                                            <strong style="color:var(--text);">${this.escapeHtml(uDisplayName)}</strong>
+                                            <div style="font-size:0.75rem; color:var(--text-muted);">${this.escapeHtml(u.email)} ${u.username ? `(${this.escapeHtml(u.username)})` : ''}</div>
                                         </div>
                                     </div>
                                 </td>
@@ -859,12 +1126,59 @@ const App = {
     },
 
     renderGenericDashboard(container, hash) {
+        const cleanHash = (hash || '').replace('#', '');
+        const defaultDash = this.getDefaultDashboard();
+        
+        const moduleMap = {
+            'parent-learners': { title: 'Learner Management', sprint: 'Sprint 2 (Module 02)', desc: 'Register home learners, enroll in P1–P7 classes, and manage active subjects.' },
+            'parent-guides': { title: 'Parental Guides', sprint: 'Sprint 5 (Module 05)', desc: 'Step-by-step teaching guides and suggested weekly homeschooling schedules.' },
+            'parent-assessments': { title: 'Assessments & Quizzes', sprint: 'Sprint 6 (Module 06)', desc: 'Track formative and summative assessment attempts, auto-scores, and remarks.' },
+            'parent-sync': { title: 'Offline & Sync Status', sprint: 'Sprint 7 (Module 07)', desc: 'Inspect local IndexedDB synchronization queue and device connection status.' },
+            'learner-subjects': { title: 'Curriculum Subjects', sprint: 'Sprint 3 (Module 03)', desc: 'Primary One through Seven (P1–P7) Ugandan Syllabus curriculum units.' },
+            'learner-lessons': { title: 'Interactive Lessons', sprint: 'Sprint 4 (Module 04)', desc: 'Curriculum-aligned lesson content, worksheets, notes, and audios.' },
+            'learner-assessments': { title: 'Learner Assessments', sprint: 'Sprint 6 (Module 06)', desc: 'Online and offline multiple-choice quizzes and subjective exercises.' },
+            'learner-downloads': { title: 'Saved Offline Lessons', sprint: 'Sprint 7 (Module 07)', desc: 'Locally cached lessons and guides available without internet connection.' },
+            'teacher-learners': { title: 'Assigned Learners', sprint: 'Sprint 2 (Module 02)', desc: 'Cohort list of homeschooling learners assigned for teacher oversight.' },
+            'teacher-assessments': { title: 'Assessment Grading', sprint: 'Sprint 6 (Module 06)', desc: 'Review subjective answers, assign marks, and submit qualitative feedback.' },
+            'teacher-class-summary': { title: 'Class Performance Summary', sprint: 'Sprint 8 (Module 08)', desc: 'Class-wide completion rates, subject averages, and struggling learner alerts.' },
+            'officer-classes': { title: 'Curriculum & Classes Setup', sprint: 'Sprint 3 (Module 03)', desc: 'Configure classes P1–P7, subject allocations, terms, and competence goals.' },
+            'officer-materials': { title: 'Learning Materials Review', sprint: 'Sprint 4 (Module 04)', desc: 'Review, approve, version, and publish digital syllabus resources.' },
+            'officer-compliance': { title: 'National Compliance Analytics', sprint: 'Sprint 9 (Module 09)', desc: 'Monitor national and district curriculum coverage against MoES benchmarks.' },
+            'admin-users': { title: 'User Account Management', sprint: 'Sprint 1 (Module 01)', desc: 'Administrative user provisioning, role allocation, and status management.' },
+            'admin-audit': { title: 'Security & Audit Trail', sprint: 'Sprint 12 (Module 12)', desc: 'Immutable audit logs with before/after JSON diffs for system actions.' },
+            'admin-system-health': { title: 'System & Sync Diagnostics', sprint: 'Sprint 10 (Module 10)', desc: 'Server health diagnostics, sync queue metrics, and error rates.' }
+        };
+
+        const info = moduleMap[cleanHash] || {
+            title: cleanHash.replace('-', ' ').toUpperCase(),
+            sprint: 'Specification Roadmap',
+            desc: 'Module capability defined in the Master Development Plan.'
+        };
+
         container.innerHTML = `
-            <div class="card">
-                <h2>Dashboard Section</h2>
-                <p>Path: <code>${this.escapeHtml(hash)}</code></p>
-                <div class="alert alert-warning" style="margin-top:1rem;">
-                    This module section will be populated in subsequent sprints per the Master Development Plan.
+            <div style="max-width:850px; margin:0 auto;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem;">
+                    <a href="${defaultDash}" class="btn btn-secondary btn-sm">← Back to Dashboard</a>
+                    <a href="/docs/" target="_blank" class="btn btn-secondary btn-sm">📖 View Module Docs</a>
+                </div>
+
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
+                        <div>
+                            <h2>${this.escapeHtml(info.title)}</h2>
+                            <p style="margin-top:4px; color:var(--text-muted);">${this.escapeHtml(info.desc)}</p>
+                        </div>
+                        <span class="badge badge-pending" style="font-size:0.8rem; padding:4px 10px;">${this.escapeHtml(info.sprint)}</span>
+                    </div>
+
+                    <div class="alert alert-warning" style="margin-top:1.5rem;">
+                        <strong>Development Sequence:</strong> This module is configured according to the master specification. We are progressing sequentially through the sprints (Next: Sprint 2 / Module 02).
+                    </div>
+
+                    <div style="margin-top:1.5rem; display:flex; gap:10px;">
+                        <a href="${defaultDash}" class="btn btn-primary">Return to Main Dashboard</a>
+                        <a href="/docs/#mod-roadmap" target="_blank" class="btn btn-secondary">Explore Master Roadmap</a>
+                    </div>
                 </div>
             </div>
         `;
@@ -873,3 +1187,4 @@ const App = {
 
 // Start application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => App.init());
+

@@ -41,6 +41,7 @@ class AuthController
             SELECT 
                 u.user_id,
                 u.role_id,
+                u.full_name,
                 r.role_code,
                 r.role_name,
                 u.username,
@@ -175,9 +176,12 @@ class AuthController
                 'role_id' => (int)$user['role_id'],
                 'role_code' => $user['role_code'],
                 'role_name' => $user['role_name'],
+                'full_name' => $user['full_name'] ?? $profile['full_name'] ?? $user['username'],
                 'username' => $user['username'],
                 'email' => $user['email'],
                 'avatar_url' => $user['avatar_url'] ?? null,
+                'account_status' => $user['account_status'] ?? 'active',
+                'last_login_at' => $user['last_login_at'] ?? null,
                 'dashboard_url' => $dashboardUrls[$user['role_code']] ?? '/#dashboard',
                 'profile' => $profile
             ]
@@ -235,6 +239,7 @@ class AuthController
             $userStmt = $db->prepare('
                 INSERT INTO users (
                     role_id, 
+                    full_name,
                     username, 
                     email, 
                     password_hash, 
@@ -243,6 +248,7 @@ class AuthController
                     created_at
                 ) VALUES (
                     2, -- role_id 2 for parent
+                    :full_name,
                     :username,
                     :email,
                     :pwd_hash,
@@ -255,6 +261,7 @@ class AuthController
             $username = explode('@', $email)[0] . '_' . rand(100, 999);
             $pwdHash = password_hash($password, PASSWORD_BCRYPT);
             $userStmt->execute([
+                ':full_name' => $fullName,
                 ':username' => $username,
                 ':email' => $email,
                 ':pwd_hash' => $pwdHash
@@ -265,33 +272,33 @@ class AuthController
             // Insert into parents table
             $parentStmt = $db->prepare('
                 INSERT INTO parents (
-                    user_id,
-                    full_name,
-                    national_id,
-                    phone,
-                    email,
-                    physical_address,
-                    district,
-                    registration_date,
-                    status,
+                    user_id, 
+                    full_name, 
+                    national_id, 
+                    phone, 
+                    email, 
+                    physical_address, 
+                    district, 
+                    registration_date, 
+                    status, 
                     created_at
                 ) VALUES (
-                    :uid,
-                    :name,
-                    :nid,
-                    :phone,
-                    :email,
-                    :address,
-                    :district,
-                    CURDATE(),
-                    "active",
+                    :uid, 
+                    :full_name, 
+                    :nid, 
+                    :phone, 
+                    :email, 
+                    :address, 
+                    :district, 
+                    CURDATE(), 
+                    "active", 
                     NOW()
                 )
             ');
 
             $parentStmt->execute([
                 ':uid' => $userId,
-                ':name' => $fullName,
+                ':full_name' => $fullName,
                 ':nid' => $nationalId,
                 ':phone' => $phone,
                 ':email' => $email,
@@ -551,5 +558,205 @@ class AuthController
         AuditService::log((int)$user['user_id'], 'PASSWORD_CHANGED', "Password changed by user");
 
         Response::success(null, 'Password updated successfully.');
+    }
+
+    /**
+     * POST /api/auth/update-avatar
+     */
+    public function updateAvatar(): void
+    {
+        $user = AuthMiddleware::handle();
+        $db = Database::getConnection();
+
+        $avatarUrl = null;
+
+        // 1. Check if binary file uploaded via multipart form
+        if (!empty($_FILES['avatar_file']['tmp_name'])) {
+            $file = $_FILES['avatar_file'];
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                Response::error('File upload failed with error code ' . $file['error'], 400);
+            }
+
+            // Max size 4MB
+            if ($file['size'] > 4 * 1024 * 1024) {
+                Response::error('Photo file size must not exceed 4MB.', 422);
+            }
+
+            // MIME type verification
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_file($finfo, $file['tmp_name']);
+            finfo_close($finfo);
+
+            $allowedMimes = [
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+                'image/webp' => 'webp',
+                'image/gif' => 'gif',
+                'image/svg+xml' => 'svg'
+            ];
+
+            if (!isset($allowedMimes[$mime])) {
+                Response::error('Invalid image type. Supported formats: JPG, PNG, WEBP, GIF, SVG.', 422);
+            }
+
+            $ext = $allowedMimes[$mime];
+            $uploadDir = __DIR__ . '/../../storage/uploads/avatars';
+            if (!is_dir($uploadDir)) {
+                @mkdir($uploadDir, 0775, true);
+            }
+
+            $filename = 'avatar_' . $user['user_id'] . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+            $destination = $uploadDir . '/' . $filename;
+
+            if (!move_uploaded_file($file['tmp_name'], $destination)) {
+                Response::error('Failed to save uploaded image.', 500);
+            }
+
+            $avatarUrl = '/storage/uploads/avatars/' . $filename;
+        } else {
+            // 2. Or read from JSON/POST avatar_url
+            $body = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+            if (!empty($body['avatar_url'])) {
+                $avatarUrl = trim((string)$body['avatar_url']);
+            }
+        }
+
+        if (!$avatarUrl) {
+            Response::error('Please select an image file to upload or provide an avatar URL.', 422);
+        }
+
+        $stmt = $db->prepare('UPDATE users SET avatar_url = :url WHERE user_id = :id');
+        $stmt->execute([
+            ':url' => $avatarUrl,
+            ':id' => $user['user_id']
+        ]);
+
+        AuditService::log((int)$user['user_id'], 'AVATAR_UPDATED', "User updated profile photo", 'users', $user['user_id']);
+
+        $user['avatar_url'] = $avatarUrl;
+
+        Response::success([
+            'avatar_url' => $avatarUrl,
+            'user' => $user
+        ], 'Profile photo updated successfully.');
+    }
+
+    /**
+     * POST /api/auth/update-profile
+     */
+    public function updateProfile(): void
+    {
+        $user = AuthMiddleware::handle();
+        $body = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        
+        $validator = Validator::make($body)
+            ->required('full_name', 'Full Name');
+            
+        if ($validator->fails()) {
+            Response::validationError($validator->getErrors());
+        }
+
+        $fullName = trim((string)$body['full_name']);
+        $db = Database::getConnection();
+
+        try {
+            Database::beginTransaction();
+
+            // 1. Update full_name in users table
+            $stmt = $db->prepare('UPDATE users SET full_name = :fname WHERE user_id = :uid');
+            $stmt->execute([':fname' => $fullName, ':uid' => $user['user_id']]);
+
+            // 2. Sync to corresponding role table
+            switch ($user['role_code']) {
+                case 'parent':
+                    $phone = !empty($body['phone']) ? trim((string)$body['phone']) : null;
+                    $nationalId = !empty($body['national_id']) ? trim((string)$body['national_id']) : null;
+                    $district = !empty($body['district']) ? trim((string)$body['district']) : null;
+                    $address = !empty($body['physical_address']) ? trim((string)$body['physical_address']) : null;
+                    $lang = !empty($body['preferred_language']) ? trim((string)$body['preferred_language']) : null;
+                    
+                    $pStmt = $db->prepare('
+                        UPDATE parents 
+                        SET full_name = :fname,
+                            phone = COALESCE(:phone, phone),
+                            national_id = COALESCE(:nid, national_id),
+                            district = COALESCE(:district, district),
+                            physical_address = COALESCE(:address, physical_address),
+                            preferred_language = COALESCE(:lang, preferred_language)
+                        WHERE user_id = :uid
+                    ');
+                    $pStmt->execute([
+                        ':fname' => $fullName,
+                        ':phone' => $phone,
+                        ':nid' => $nationalId,
+                        ':district' => $district,
+                        ':address' => $address,
+                        ':lang' => $lang,
+                        ':uid' => $user['user_id']
+                    ]);
+                    break;
+
+                case 'teacher':
+                    $phone = !empty($body['phone']) ? trim((string)$body['phone']) : null;
+                    $specialty = !empty($body['subject_specialty']) ? trim((string)$body['subject_specialty']) : null;
+                    $school = !empty($body['school']) ? trim((string)$body['school']) : null;
+                    $tStmt = $db->prepare('
+                        UPDATE teachers 
+                        SET full_name = :fname,
+                            phone = COALESCE(:phone, phone),
+                            subject_specialty = COALESCE(:specialty, subject_specialty),
+                            school = COALESCE(:school, school)
+                        WHERE user_id = :uid
+                    ');
+                    $tStmt->execute([
+                        ':fname' => $fullName,
+                        ':phone' => $phone,
+                        ':specialty' => $specialty,
+                        ':school' => $school,
+                        ':uid' => $user['user_id']
+                    ]);
+                    break;
+
+                case 'curriculum_officer':
+                    $phone = !empty($body['phone']) ? trim((string)$body['phone']) : null;
+                    $dept = !empty($body['department']) ? trim((string)$body['department']) : null;
+                    $cStmt = $db->prepare('
+                        UPDATE curriculum_officers 
+                        SET full_name = :fname,
+                            phone = COALESCE(:phone, phone),
+                            department = COALESCE(:dept, department)
+                        WHERE user_id = :uid
+                    ');
+                    $cStmt->execute([
+                        ':fname' => $fullName,
+                        ':phone' => $phone,
+                        ':dept' => $dept,
+                        ':uid' => $user['user_id']
+                    ]);
+                    break;
+
+                case 'learner':
+                    $lStmt = $db->prepare('UPDATE learners SET full_name = :fname WHERE user_id = :uid');
+                    $lStmt->execute([':fname' => $fullName, ':uid' => $user['user_id']]);
+                    break;
+            }
+
+            Database::commit();
+
+            AuditService::log((int)$user['user_id'], 'PROFILE_UPDATED', "User updated profile details");
+
+            // Re-fetch updated user profile
+            $updatedProfile = AuthMiddleware::fetchUserProfile((int)$user['user_id'], $user['role_code']);
+            $user['full_name'] = $fullName;
+            $user['profile'] = $updatedProfile;
+
+            Response::success([
+                'user' => $user
+            ], 'Profile details updated successfully.');
+
+        } catch (Throwable $e) {
+            Database::rollBack();
+            Response::error('Failed to update profile: ' . $e->getMessage(), 500);
+        }
     }
 }

@@ -91,10 +91,16 @@ TMHIS employs a **Decoupled API-First Layered Architecture** with an **Offline-F
 
 ## 4. Detailed Module Specifications (01 – 13)
 
-### Module 01: Authentication, Users & RBAC
-- Multi-role secure login supporting email or username.
-- Bcrypt password hashing and single-use, time-expiring password reset tokens.
-- Brute-force protection: IP rate limiting and account lockout after repeated failed attempts.
+### Module 01: Authentication, Access Control & User Profiles
+- Secure session-based and bearer token authentication for all 5 roles.
+- Universal `full_name` support stored in `users` and synchronized with role profile tables.
+- User profile management with live photo upload (`POST /api/auth/update-avatar`) and details editing (`POST /api/auth/update-profile`).
+- Role tags with dedicated color themes for instant role recognition.
+- Failed login lockout after 5 consecutive attempts (15-minute lock).
+- Time-expiring (1 hour), single-use password reset tokens.
+- Server-side rate limiting per IP address.
+- Client SPA route protection and role-based navigation.
+- Accessible web documentation portal hosted directly at `/docs/`.
 - Stateful sessions and stateless HMAC Bearer tokens for offline PWA sync.
 - Comprehensive security audit logging of all authentication events.
 

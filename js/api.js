@@ -17,11 +17,15 @@ const API = {
     },
 
     async request(url, options = {}) {
+        const isFormData = options.body instanceof FormData;
         const headers = {
-            'Content-Type': 'application/json',
             'Accept': 'application/json',
             ...(options.headers || {})
         };
+
+        if (!isFormData && !headers['Content-Type']) {
+            headers['Content-Type'] = 'application/json';
+        }
 
         const token = this.getToken();
         if (token) {
@@ -87,6 +91,13 @@ const API = {
         return this.request(url, {
             method: 'PUT',
             body: JSON.stringify(data)
+        });
+    },
+
+    upload(url, formData) {
+        return this.request(url, {
+            method: 'POST',
+            body: formData
         });
     },
 

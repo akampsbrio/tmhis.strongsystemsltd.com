@@ -43,7 +43,7 @@ class AdminUserController
         }
 
         if ($search) {
-            $where[] = '(u.email LIKE :search OR u.username LIKE :search)';
+            $where[] = '(u.full_name LIKE :search OR u.email LIKE :search OR u.username LIKE :search)';
             $params[':search'] = "%{$search}%";
         }
 
@@ -64,6 +64,7 @@ class AdminUserController
             SELECT 
                 u.user_id,
                 u.role_id,
+                u.full_name,
                 r.role_code,
                 r.role_name,
                 u.username,
@@ -149,11 +150,12 @@ class AdminUserController
             $pwdHash = password_hash($password, PASSWORD_BCRYPT);
 
             $insertUser = $db->prepare('
-                INSERT INTO users (role_id, username, email, password_hash, account_status, email_verified_at, created_at)
-                VALUES (:rid, :uname, :email, :phash, "active", NOW(), NOW())
+                INSERT INTO users (role_id, full_name, username, email, password_hash, account_status, email_verified_at, created_at)
+                VALUES (:rid, :fname, :uname, :email, :phash, "active", NOW(), NOW())
             ');
             $insertUser->execute([
                 ':rid' => $roleId,
+                ':fname' => $fullName,
                 ':uname' => $username,
                 ':email' => $email,
                 ':phash' => $pwdHash

@@ -70,6 +70,7 @@ class AuthMiddleware
             SELECT 
                 u.user_id, 
                 u.role_id, 
+                u.full_name,
                 r.role_code, 
                 r.role_name, 
                 u.username, 
@@ -135,6 +136,7 @@ class AuthMiddleware
             SELECT 
                 u.user_id, 
                 u.role_id, 
+                u.full_name,
                 r.role_code, 
                 r.role_name, 
                 u.username, 
@@ -169,7 +171,7 @@ class AuthMiddleware
                 return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 
             case 'learner':
-                $stmt = $db->prepare('SELECT learner_id, parent_id, class_id, first_name, last_name, gender, date_of_birth, admission_number, status FROM learners WHERE user_id = :uid');
+                $stmt = $db->prepare('SELECT learner_id, parent_id, class_id, full_name, gender, date_of_birth, status FROM learners WHERE user_id = :uid');
                 $stmt->execute([':uid' => $userId]);
                 return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 
@@ -184,7 +186,15 @@ class AuthMiddleware
                 return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 
             case 'administrator':
-                return ['user_id' => $userId, 'role' => 'administrator', 'scope' => 'system_technical'];
+                $stmt = $db->prepare('SELECT full_name FROM users WHERE user_id = :uid');
+                $stmt->execute([':uid' => $userId]);
+                $fullName = $stmt->fetchColumn() ?: 'System Administrator';
+                return [
+                    'user_id' => $userId, 
+                    'role' => 'administrator', 
+                    'scope' => 'system_technical',
+                    'full_name' => $fullName
+                ];
 
             default:
                 return null;

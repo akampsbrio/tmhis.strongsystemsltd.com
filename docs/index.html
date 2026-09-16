@@ -643,6 +643,18 @@
                             <td>Change password with old password verification</td>
                             <td>Bearer / Session</td>
                         </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/auth/update-avatar</code></td>
+                            <td>Upload image file (max 4MB) or set URL for user profile photo</td>
+                            <td>Bearer / Session</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/auth/update-profile</code></td>
+                            <td>Update user full name and role-specific contact details</td>
+                            <td>Bearer / Session</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -662,13 +674,13 @@
                         <tr>
                             <td><span class="badge badge-method">GET</span></td>
                             <td><code>/api/admin/users</code></td>
-                            <td>Paginated user list with role and status filters</td>
+                            <td>Paginated user list with full names, role badges, and status filters</td>
                             <td><code>administrator</code></td>
                         </tr>
                         <tr>
                             <td><span class="badge badge-method">POST</span></td>
                             <td><code>/api/admin/users</code></td>
-                            <td>Create teacher, officer, parent, or admin account</td>
+                            <td>Create teacher, officer, parent, or admin account with full name</td>
                             <td><code>administrator</code></td>
                         </tr>
                         <tr>
@@ -689,22 +701,25 @@
 
             <h2 class="section-heading">Implementation Summary</h2>
             <ul>
-                <li><strong>Multi-role Login:</strong> Authenticates all 5 roles and routes to their respective dashboards.</li>
+                <li><strong>Multi-role Login & Routing:</strong> Authenticates all 5 roles (Administrator, Curriculum Officer, Teacher, Parent, Learner) and routes to their dedicated dashboards.</li>
+                <li><strong>Unified Full Name & Profile Management:</strong> Direct <code>full_name</code> column in <code>users</code> table synchronized with actor profile tables (parents, teachers, officers, learners) and editable live from the Profile view.</li>
+                <li><strong>Avatar & Photo Uploads:</strong> Multi-part file upload (JPG, PNG, WEBP, GIF $\le 4$MB) with server-side MIME verification and fallback to dynamic UI avatars.</li>
+                <li><strong>Role Badge Styling:</strong> Color-coded visual tags for distinct role recognition across user pills, dropdown headers, and tables.</li>
                 <li><strong>Parent Self-Registration:</strong> Transaction-safe creation of user credentials and linked parent profile.</li>
                 <li><strong>Security Hardening:</strong>
                     <ul>
-                        <li>Bcrypt password hashing.</li>
+                        <li>Bcrypt password hashing with salt generation.</li>
                         <li>Account lockout after 5 consecutive failed attempts (15 minutes).</li>
                         <li>IP Rate-limiting on authentication routes.</li>
-                        <li>Single-use, time-expiring reset tokens.</li>
+                        <li>Single-use, 1-hour time-expiring reset tokens.</li>
                     </ul>
                 </li>
                 <li><strong>Client SPA Route Guards:</strong> Automatically redirects authenticated users to their dashboards and shields private screens.</li>
-                <li><strong>Audit Trail Logging:</strong> Logs every login, logout, password change, and status alteration.</li>
+                <li><strong>Audit Trail Logging:</strong> Logs every login, logout, password change, profile update, and status alteration.</li>
             </ul>
 
             <h2 class="section-heading">Verification & Test Suite</h2>
-            <p>Run the automated test runner to verify all 14 acceptance criteria:</p>
+            <p>Run the automated test runner to verify all 16 foundation and authentication test assertions:</p>
             <pre><code>php tests/test_sprint0_sprint1.php</code></pre>
         </section>
 
@@ -752,6 +767,7 @@
                     <thead>
                         <tr>
                             <th>Role</th>
+                            <th>Full Name</th>
                             <th>Email</th>
                             <th>Password</th>
                             <th>Access Scope</th>
@@ -760,27 +776,31 @@
                     <tbody>
                         <tr>
                             <td><strong>Administrator</strong></td>
+                            <td>System Administrator</td>
                             <td><code>admin@tmhis.org</code></td>
                             <td><code>Admin@2026!</code></td>
                             <td>Technical Administration, User Management, Audit Logs</td>
                         </tr>
                         <tr>
                             <td><strong>Curriculum Officer</strong></td>
+                            <td>Dr. Grace Kiconco</td>
                             <td><code>officer.ncdc@tmhis.org</code></td>
                             <td><code>Officer@2026!</code></td>
-                            <td>NCDC Curriculum Management, Material Review & Approval</td>
+                            <td>Curriculum Setup (P1–P7), Materials Review, National Compliance</td>
                         </tr>
                         <tr>
                             <td><strong>Teacher</strong></td>
+                            <td>David Mukasa</td>
                             <td><code>teacher.mukasa@tmhis.org</code></td>
                             <td><code>Teacher@2026!</code></td>
-                            <td>Assigned Learners Oversight, Assessment Review & Grading</td>
+                            <td>Learner Progress Oversight, Subjective Grading, Feedback</td>
                         </tr>
                         <tr>
                             <td><strong>Parent</strong></td>
+                            <td>Sarah Namubiru</td>
                             <td><code>parent.namubiru@tmhis.org</code></td>
                             <td><code>Parent@2026!</code></td>
-                            <td>Home Learning Facilitation, Learner Management, Schedules</td>
+                            <td>Home Learner Management, Teaching Guides, Quiz Tracking</td>
                         </tr>
                     </tbody>
                 </table>
