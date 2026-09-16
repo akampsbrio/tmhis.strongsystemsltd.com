@@ -632,12 +632,82 @@ table.data-table tr:hover {
     color: var(--text-main);
 }
 
-/* Learner Management Styles */
+/* Learner Management Dynamic Grids */
 .learner-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 1.25rem;
     margin-top: 1.25rem;
+    width: 100%;
+}
+
+/* 1 Child: Covers entire row (100% width) */
+.learner-grid-1 {
+    grid-template-columns: 1fr;
+}
+
+/* 2 Children: 2 columns per row (div 6 / 50% each) */
+.learner-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* 3 Children: 3 columns per row (col 4 / 33.33% each) */
+.learner-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* 4 Children: 2 columns per row (col 6 / 50% each -> 2x2 grid) */
+.learner-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* 5 or 6 Children: 3 columns per row (col 4 / 33.33% each -> 3x2 grid) */
+.learner-grid-5,
+.learner-grid-6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* 7+ Children: auto-fill responsive grid */
+.learner-grid-multi {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+/* Responsive Grid Breakpoints */
+@media (max-width: 992px) {
+    .learner-grid-3,
+    .learner-grid-5,
+    .learner-grid-6 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 680px) {
+    .learner-grid-1,
+    .learner-grid-2,
+    .learner-grid-3,
+    .learner-grid-4,
+    .learner-grid-5,
+    .learner-grid-6,
+    .learner-grid-multi {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* 1 Child Full-Row Hero Card Presentation */
+.learner-grid-1 .learner-card {
+    padding: 1.85rem;
+    background: linear-gradient(180deg, var(--bg-card) 0%, #f8fafc 100%);
+    border: 1.5px solid #cbd5e1;
+}
+
+.learner-grid-1 .learner-avatar-wrapper,
+.learner-grid-1 .learner-avatar-img,
+.learner-grid-1 .learner-avatar-box {
+    width: 68px;
+    height: 68px;
+}
+
+.learner-grid-1 .learner-card-title {
+    font-size: 1.35rem;
 }
 
 .learner-card {

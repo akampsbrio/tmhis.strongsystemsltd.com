@@ -1873,8 +1873,24 @@ const App = {
             `;
         }).join('');
 
+        let gridModifier = 'learner-grid-multi';
+        const count = learners.length;
+        if (count === 1) {
+            gridModifier = 'learner-grid-1';
+        } else if (count === 2) {
+            gridModifier = 'learner-grid-2';
+        } else if (count === 3) {
+            gridModifier = 'learner-grid-3';
+        } else if (count === 4) {
+            gridModifier = 'learner-grid-4';
+        } else if (count === 5) {
+            gridModifier = 'learner-grid-5';
+        } else if (count === 6) {
+            gridModifier = 'learner-grid-6';
+        }
+
         gridBox.innerHTML = `
-            <div class="learner-grid">
+            <div class="learner-grid ${gridModifier}">
                 ${cardsHtml}
             </div>
         `;
