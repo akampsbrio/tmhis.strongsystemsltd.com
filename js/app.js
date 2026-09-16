@@ -222,8 +222,12 @@ const App = {
             this.renderProfile(content);
         } else if (currentHash === '#admin-dashboard') {
             this.renderAdminDashboard(content);
+        } else if (currentHash === '#admin-users') {
+            this.renderAdminUsers(content);
         } else if (currentHash === '#parent-dashboard') {
             this.renderParentDashboard(content);
+        } else if (currentHash === '#parent-learners') {
+            this.renderParentLearners(content);
         } else if (currentHash === '#learner-dashboard') {
             this.renderLearnerDashboard(content);
         } else if (currentHash === '#teacher-dashboard') {
@@ -1408,6 +1412,799 @@ const App = {
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerText = 'Create User';
+        }
+    },
+
+    // =========================================================================
+    // MODULE 02: PARENT, FAMILY & LEARNER MANAGEMENT
+    // =========================================================================
+
+    cachedClasses: [],
+    cachedLearners: [],
+
+    async fetchClasses() {
+        if (this.cachedClasses.length > 0) return this.cachedClasses;
+        try {
+            const res = await API.get('/api/parent/classes');
+            this.cachedClasses = res.data || [];
+            return this.cachedClasses;
+        } catch (err) {
+            console.error('Failed to fetch classes:', err);
+            return [];
+        }
+    },
+
+    renderParentLearners(container) {
+        const user = Auth.getUser();
+        container.innerHTML = `
+            <div style="max-width:1150px; margin:0 auto;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:1.5rem;">
+                    <div>
+                        <h2>👨‍👩‍👧 My Home Learners</h2>
+                        <p style="color:var(--text-muted); margin-top:4px;">Ugandan Primary Syllabus (P1–P7) • Child Registration, Class Allocation & Enrolled Subjects</p>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <a href="#parent-dashboard" class="btn btn-secondary btn-sm">← Back to Dashboard</a>
+                        <button class="btn btn-primary" onclick="App.openRegisterLearnerModal()">➕ Register New Child</button>
+                    </div>
+                </div>
+
+                <!-- Summary Stats Bar -->
+                <div class="stats-summary-bar" id="learners-stats-bar">
+                    <div class="summary-stat-box">
+                        <div class="summary-stat-icon">🎒</div>
+                        <div class="summary-stat-content">
+                            <h4 id="stat-total-learners">0</h4>
+                            <p>Enrolled Children</p>
+                        </div>
+                    </div>
+                    <div class="summary-stat-box">
+                        <div class="summary-stat-icon">📚</div>
+                        <div class="summary-stat-content">
+                            <h4 id="stat-active-classes">0</h4>
+                            <p>Primary Levels</p>
+                        </div>
+                    </div>
+                    <div class="summary-stat-box">
+                        <div class="summary-stat-icon">⏱️</div>
+                        <div class="summary-stat-content">
+                            <h4 id="stat-total-subjects">0</h4>
+                            <p>Active Subjects</p>
+                        </div>
+                    </div>
+                    <div class="summary-stat-box">
+                        <div class="summary-stat-icon">♿</div>
+                        <div class="summary-stat-content">
+                            <h4 id="stat-special-needs">0</h4>
+                            <p>Accommodations</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters & Search Bar -->
+                <div class="card" style="margin-bottom:1.5rem; padding:1rem 1.25rem;">
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;">
+                        <div style="flex:1; min-width:240px;">
+                            <input type="text" id="learner-search-input" class="form-control" placeholder="🔍 Search child by name..." oninput="App.filterLearnersGrid()">
+                        </div>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <select id="learner-class-filter" class="form-control" style="width:auto;" onchange="App.filterLearnersGrid()">
+                                <option value="">All Classes (P1–P7)</option>
+                                <option value="P1">Primary 1 (P1)</option>
+                                <option value="P2">Primary 2 (P2)</option>
+                                <option value="P3">Primary 3 (P3)</option>
+                                <option value="P4">Primary 4 (P4)</option>
+                                <option value="P5">Primary 5 (P5)</option>
+                                <option value="P6">Primary 6 (P6)</option>
+                                <option value="P7">Primary 7 (P7)</option>
+                            </select>
+                            <select id="learner-status-filter" class="form-control" style="width:auto;" onchange="App.filterLearnersGrid()">
+                                <option value="active">Active Only</option>
+                                <option value="all">All Statuses</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Learners Grid Container -->
+                <div id="learners-grid-container">
+                    <div class="card" style="text-align:center; padding:3rem 1rem;">
+                        <p style="color:var(--text-muted); font-size:1.05rem;">Loading your registered learners...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 1. Register Child Modal -->
+            <div id="register-learner-modal" class="modal-overlay">
+                <div class="modal-box modal-box-lg">
+                    <div class="modal-header">
+                        <h3>🎒 Register New Child (P1–P7)</h3>
+                        <button class="close-btn" onclick="App.closeRegisterLearnerModal()">&times;</button>
+                    </div>
+                    <div id="register-learner-alert"></div>
+                    <form onsubmit="App.handleRegisterLearner(event)" id="register-learner-form">
+                        <div class="form-row">
+                            <div class="form-group" style="flex:2;">
+                                <label for="reg-learner-name">Child Full Name *</label>
+                                <input type="text" id="reg-learner-name" class="form-control" placeholder="e.g. Kato Brian Mukasa" required minlength="2">
+                            </div>
+                            <div class="form-group" style="flex:1;">
+                                <label for="reg-learner-gender">Gender *</label>
+                                <select id="reg-learner-gender" class="form-control" required>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                    <option value="prefer_not_to_say">Prefer not to say</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="reg-learner-dob">Date of Birth *</label>
+                                <input type="date" id="reg-learner-dob" class="form-control" required onchange="App.onRegisterDobChange()">
+                                <small id="reg-learner-age-calc" style="color:var(--primary); font-weight:600; display:block; margin-top:4px;"></small>
+                            </div>
+                            <div class="form-group">
+                                <label for="reg-learner-class">Primary Class Level *</label>
+                                <select id="reg-learner-class" class="form-control" required onchange="App.onRegisterDobChange()">
+                                    <option value="">Select Primary Class...</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="reg-age-advisory-box"></div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="reg-learner-re">Religious Education Track *</label>
+                                <select id="reg-learner-re" class="form-control">
+                                    <option value="cre">Christian Religious Education (CRE)</option>
+                                    <option value="ire">Islamic Religious Education (IRE)</option>
+                                    <option value="all">Include Both CRE & IRE</option>
+                                </select>
+                                <small style="color:var(--text-muted);">Syllabus subjects will be automatically allocated based on this selection.</small>
+                            </div>
+                        </div>
+
+                        <!-- Special Learning Needs Section -->
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:var(--radius-sm); padding:1rem; margin-top:1rem;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600;">
+                                <input type="checkbox" id="reg-learner-special-needs" onchange="App.toggleSpecialNeedsDetails('reg')">
+                                <span>Child requires Special Learning Needs Accommodations (e.g. extra time, high contrast, audio)</span>
+                            </label>
+                            <div id="reg-special-needs-container" style="display:none; margin-top:0.75rem;">
+                                <label for="reg-learner-needs-desc">Accommodation Notes & Instructions</label>
+                                <textarea id="reg-learner-needs-desc" class="form-control" rows="2" placeholder="Describe accommodations needed (e.g. 25% extra quiz time, audio guides, visual dyscalculia support)..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Optional Standalone Login Section -->
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:var(--radius-sm); padding:1rem; margin-top:1rem;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600;">
+                                <input type="checkbox" id="reg-create-login" onchange="App.toggleCreateLoginDetails('reg')">
+                                <span>Create Standalone Student Login Account (Recommended for P4–P7 independent learners)</span>
+                            </label>
+                            <div id="reg-login-container" style="display:none; margin-top:0.75rem;">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="reg-student-username">Student Username *</label>
+                                        <input type="text" id="reg-student-username" class="form-control" placeholder="e.g. brian_mukasa">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="reg-student-password">Student Password *</label>
+                                        <input type="password" id="reg-student-password" class="form-control" placeholder="••••••••" minlength="6">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:1.5rem;">
+                            <button type="button" class="btn btn-secondary" onclick="App.closeRegisterLearnerModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary" id="btn-save-learner">Register Child & Assign Subjects</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 2. Edit Learner Modal -->
+            <div id="edit-learner-modal" class="modal-overlay">
+                <div class="modal-box modal-box-lg">
+                    <div class="modal-header">
+                        <h3 id="edit-learner-title">✏️ Edit Learner Profile</h3>
+                        <button class="close-btn" onclick="App.closeEditLearnerModal()">&times;</button>
+                    </div>
+                    <div id="edit-learner-alert"></div>
+                    <form onsubmit="App.handleSaveEditLearner(event)" id="edit-learner-form">
+                        <input type="hidden" id="edit-learner-id">
+                        <div class="form-row">
+                            <div class="form-group" style="flex:2;">
+                                <label for="edit-learner-name">Child Full Name *</label>
+                                <input type="text" id="edit-learner-name" class="form-control" required minlength="2">
+                            </div>
+                            <div class="form-group" style="flex:1;">
+                                <label for="edit-learner-gender">Gender *</label>
+                                <select id="edit-learner-gender" class="form-control" required>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                    <option value="prefer_not_to_say">Prefer not to say</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="edit-learner-dob">Date of Birth *</label>
+                                <input type="date" id="edit-learner-dob" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-learner-class">Primary Class Level *</label>
+                                <select id="edit-learner-class" class="form-control" required>
+                                    <!-- Populated dynamically -->
+                                </select>
+                                <small style="color:#b45309; font-weight:500; display:block; margin-top:3px;">
+                                    ⚠️ Changing class level will automatically re-align active enrolled subjects to the new syllabus.
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Special Learning Needs Section -->
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:var(--radius-sm); padding:1rem; margin-top:1rem;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600;">
+                                <input type="checkbox" id="edit-learner-special-needs" onchange="App.toggleSpecialNeedsDetails('edit')">
+                                <span>Child requires Special Learning Needs Accommodations</span>
+                            </label>
+                            <div id="edit-special-needs-container" style="display:none; margin-top:0.75rem;">
+                                <label for="edit-learner-needs-desc">Accommodation Notes & Instructions</label>
+                                <textarea id="edit-learner-needs-desc" class="form-control" rows="2" placeholder="Describe accommodations needed..."></textarea>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:1.5rem;">
+                            <button type="button" class="btn btn-secondary" onclick="App.closeEditLearnerModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary" id="btn-update-learner">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 3. Learner Profile & Subjects Detail Modal -->
+            <div id="learner-detail-modal" class="modal-overlay">
+                <div class="modal-box modal-box-lg">
+                    <div class="modal-header">
+                        <h3 id="detail-modal-title">Learner Profile & Curriculum</h3>
+                        <button class="close-btn" onclick="App.closeLearnerDetailModal()">&times;</button>
+                    </div>
+                    <div id="learner-detail-body">
+                        <p style="text-align:center; padding:2rem; color:var(--text-muted);">Loading learner details...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Create Student Login Modal -->
+            <div id="learner-login-modal" class="modal-overlay">
+                <div class="modal-box">
+                    <div class="modal-header">
+                        <h3>🔑 Create Student Login</h3>
+                        <button class="close-btn" onclick="App.closeCreateStudentLoginModal()">&times;</button>
+                    </div>
+                    <div id="learner-login-alert"></div>
+                    <form onsubmit="App.handleCreateStudentLogin(event)">
+                        <input type="hidden" id="student-login-learner-id">
+                        <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1rem;">
+                            Set up a standalone student account for <strong id="student-login-child-name">Child</strong> so they can log in independently to take quizzes and read lessons.
+                        </p>
+                        <div class="form-group">
+                            <label for="student-login-username">Student Username *</label>
+                            <input type="text" id="student-login-username" class="form-control" placeholder="e.g. brian_mukasa" required minlength="3">
+                        </div>
+                        <div class="form-group">
+                            <label for="student-login-password">Student Password *</label>
+                            <input type="password" id="student-login-password" class="form-control" placeholder="••••••••" required minlength="6">
+                        </div>
+                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:1.2rem;">
+                            <button type="button" class="btn btn-secondary" onclick="App.closeCreateStudentLoginModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary" id="btn-save-student-login">Create Student Account</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+
+        this.loadParentLearners();
+    },
+
+    async loadParentLearners() {
+        const gridBox = document.getElementById('learners-grid-container');
+        if (!gridBox) return;
+
+        try {
+            const [learnersRes, classes] = await Promise.all([
+                API.get('/api/parent/learners'),
+                this.fetchClasses()
+            ]);
+
+            this.cachedLearners = learnersRes.data || [];
+            this.updateLearnerStats(this.cachedLearners);
+            this.renderLearnersGrid(this.cachedLearners);
+        } catch (err) {
+            gridBox.innerHTML = `
+                <div class="alert alert-danger" style="margin-top:1rem;">
+                    Failed to load learners: ${this.escapeHtml(err.message)}
+                </div>
+            `;
+        }
+    },
+
+    updateLearnerStats(learners) {
+        const totalLearners = learners.length;
+        const activeClasses = new Set(learners.map(l => l.class_code)).size;
+        const totalSubjects = learners.reduce((acc, l) => acc + (l.active_subjects_count || 0), 0);
+        const specialNeeds = learners.filter(l => l.special_learning_needs).length;
+
+        const statTotal = document.getElementById('stat-total-learners');
+        const statClasses = document.getElementById('stat-active-classes');
+        const statSubjects = document.getElementById('stat-total-subjects');
+        const statNeeds = document.getElementById('stat-special-needs');
+
+        if (statTotal) statTotal.innerText = totalLearners;
+        if (statClasses) statClasses.innerText = activeClasses;
+        if (statSubjects) statSubjects.innerText = totalSubjects;
+        if (statNeeds) statNeeds.innerText = specialNeeds;
+    },
+
+    renderLearnersGrid(learners) {
+        const gridBox = document.getElementById('learners-grid-container');
+        if (!gridBox) return;
+
+        if (learners.length === 0) {
+            gridBox.innerHTML = `
+                <div class="card" style="text-align:center; padding:3.5rem 1.5rem;">
+                    <div style="font-size:3rem; margin-bottom:1rem;">🎒</div>
+                    <h3>No Home Learners Registered Yet</h3>
+                    <p style="color:var(--text-muted); max-width:480px; margin:0.5rem auto 1.5rem;">
+                        Register your children in Primary 1 through Primary 7 to get automated syllabus subjects, parental teaching guides, and assessments.
+                    </p>
+                    <button class="btn btn-primary" onclick="App.openRegisterLearnerModal()">➕ Register Your First Child</button>
+                </div>
+            `;
+            return;
+        }
+
+        const cardsHtml = learners.map(l => {
+            const classCode = l.class_code || 'P1';
+            const classClass = `class-${classCode.toLowerCase()}`;
+            const isFemale = l.gender === 'female';
+            const avatarClass = isFemale ? 'learner-avatar-female' : '';
+            const initial = (l.full_name || 'L').charAt(0).toUpperCase();
+            const ageDisplay = l.age !== null ? `${l.age} years old` : '—';
+            const dobFormatted = l.date_of_birth ? new Date(l.date_of_birth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+            const isInactive = l.status === 'inactive';
+
+            return `
+                <div class="learner-card" style="${isInactive ? 'opacity:0.75; filter:grayscale(0.3);' : ''}">
+                    <div>
+                        <div class="learner-card-header">
+                            <div class="learner-avatar-box ${avatarClass}">
+                                ${initial}
+                            </div>
+                            <div style="flex:1; min-width:0;">
+                                <div class="learner-card-title">${this.escapeHtml(l.full_name)}</div>
+                                <div class="learner-meta-row">
+                                    <span class="class-badge ${classClass}">${this.escapeHtml(l.class_name || classCode)}</span>
+                                    <span class="status-badge status-${l.status || 'active'}">${l.status || 'active'}</span>
+                                    ${l.special_learning_needs ? `<span class="needs-badge" title="${this.escapeHtml(l.special_needs_description || 'Special Needs Accommodation')}">♿ Accommodated</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="learner-stats-strip">
+                            <div class="learner-stat-item">
+                                <strong>${ageDisplay}</strong>
+                                <span>Born ${dobFormatted}</span>
+                            </div>
+                            <div class="learner-stat-item">
+                                <strong>${l.active_subjects_count || 0} Subjects</strong>
+                                <span>Active Curriculum</span>
+                            </div>
+                        </div>
+
+                        <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.5rem;">
+                            ${l.learner_username ? `
+                                <span>🔑 Student Login: <strong style="color:var(--text-main);">@${this.escapeHtml(l.learner_username)}</strong></span>
+                            ` : `
+                                <span>🔒 Mode: <em>Parent-guided</em></span>
+                            `}
+                        </div>
+                    </div>
+
+                    <div class="learner-card-actions">
+                        <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="App.openLearnerDetailModal(${l.learner_id})">
+                            👁️ Profile & Subjects
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="App.openEditLearnerModal(${l.learner_id})" title="Edit Learner">
+                            ✏️ Edit
+                        </button>
+                        ${!l.learner_username ? `
+                            <button class="btn btn-secondary btn-sm" onclick="App.openCreateStudentLoginModal(${l.learner_id}, '${this.escapeHtml(l.full_name)}')" title="Create Student Login">
+                                🔑 Login
+                            </button>
+                        ` : ''}
+                        <button class="btn btn-secondary btn-sm" onclick="App.toggleLearnerStatus(${l.learner_id}, '${l.status}')" title="${isInactive ? 'Activate Learner' : 'Deactivate Learner'}">
+                            ${isInactive ? '▶️' : '⏸️'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        gridBox.innerHTML = `
+            <div class="learner-grid">
+                ${cardsHtml}
+            </div>
+        `;
+    },
+
+    filterLearnersGrid() {
+        const searchVal = (document.getElementById('learner-search-input')?.value || '').toLowerCase().trim();
+        const classFilter = document.getElementById('learner-class-filter')?.value || '';
+        const statusFilter = document.getElementById('learner-status-filter')?.value || 'active';
+
+        const filtered = this.cachedLearners.filter(l => {
+            const matchesSearch = !searchVal || (l.full_name || '').toLowerCase().includes(searchVal);
+            const matchesClass = !classFilter || l.class_code === classFilter;
+            const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? l.status === 'active' : l.status === 'inactive');
+            return matchesSearch && matchesClass && matchesStatus;
+        });
+
+        this.renderLearnersGrid(filtered);
+    },
+
+    async openRegisterLearnerModal() {
+        const modal = document.getElementById('register-learner-modal');
+        const alertBox = document.getElementById('register-learner-alert');
+        const form = document.getElementById('register-learner-form');
+        const classSelect = document.getElementById('reg-learner-class');
+
+        if (!modal) return;
+        form.reset();
+        alertBox.innerHTML = '';
+        document.getElementById('reg-learner-age-calc').innerText = '';
+        document.getElementById('reg-age-advisory-box').innerHTML = '';
+        document.getElementById('reg-special-needs-container').style.display = 'none';
+        document.getElementById('reg-login-container').style.display = 'none';
+
+        // Populate class options
+        const classes = await this.fetchClasses();
+        classSelect.innerHTML = '<option value="">Select Primary Class...</option>' + classes.map(c => `
+            <option value="${c.class_id}" data-min="${c.min_age}" data-max="${c.max_age}" data-name="${c.class_name}">
+                ${c.class_name} (${c.class_code}) — Ages ${c.min_age}–${c.max_age} (${c.total_subjects || 0} subjects)
+            </option>
+        `).join('');
+
+        modal.classList.add('active');
+    },
+
+    closeRegisterLearnerModal() {
+        const modal = document.getElementById('register-learner-modal');
+        if (modal) modal.classList.remove('active');
+    },
+
+    onRegisterDobChange() {
+        const dobInput = document.getElementById('reg-learner-dob');
+        const ageLabel = document.getElementById('reg-learner-age-calc');
+        const classSelect = document.getElementById('reg-learner-class');
+        const advisoryBox = document.getElementById('reg-age-advisory-box');
+
+        if (!dobInput || !dobInput.value) {
+            if (ageLabel) ageLabel.innerText = '';
+            if (advisoryBox) advisoryBox.innerHTML = '';
+            return;
+        }
+
+        const dob = new Date(dobInput.value);
+        const now = new Date();
+        let age = now.getFullYear() - dob.getFullYear();
+        const m = now.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) {
+            age--;
+        }
+
+        if (ageLabel) {
+            ageLabel.innerText = `Calculated Age: ${age} years old`;
+        }
+
+        const selectedOption = classSelect.options[classSelect.selectedIndex];
+        if (selectedOption && selectedOption.value) {
+            const minAge = parseInt(selectedOption.getAttribute('data-min'), 10);
+            const maxAge = parseInt(selectedOption.getAttribute('data-max'), 10);
+            const className = selectedOption.getAttribute('data-name');
+
+            if (age < minAge || age > maxAge) {
+                advisoryBox.innerHTML = `
+                    <div class="alert alert-warning" style="padding:0.6rem 0.9rem; font-size:0.84rem; margin-top:0.5rem;">
+                        ℹ️ <strong>Age Guideline:</strong> ${className} is typically recommended for children aged ${minAge}–${maxAge} years. (Your child is ${age} yrs). Registration will still proceed.
+                    </div>
+                `;
+            } else {
+                advisoryBox.innerHTML = '';
+            }
+        }
+    },
+
+    toggleSpecialNeedsDetails(prefix) {
+        const chk = document.getElementById(`${prefix}-learner-special-needs`);
+        const box = document.getElementById(`${prefix}-special-needs-container`);
+        if (box) {
+            box.style.display = chk.checked ? 'block' : 'none';
+        }
+    },
+
+    toggleCreateLoginDetails(prefix) {
+        const chk = document.getElementById(`${prefix}-create-login`);
+        const box = document.getElementById(`${prefix}-login-container`);
+        if (box) {
+            box.style.display = chk.checked ? 'block' : 'none';
+        }
+    },
+
+    async handleRegisterLearner(e) {
+        e.preventDefault();
+        const alertBox = document.getElementById('register-learner-alert');
+        const submitBtn = document.getElementById('btn-save-learner');
+
+        const payload = {
+            full_name: document.getElementById('reg-learner-name').value.trim(),
+            gender: document.getElementById('reg-learner-gender').value,
+            date_of_birth: document.getElementById('reg-learner-dob').value,
+            class_id: parseInt(document.getElementById('reg-learner-class').value, 10),
+            religious_track: document.getElementById('reg-learner-re').value,
+            special_learning_needs: document.getElementById('reg-learner-special-needs').checked ? 1 : 0,
+            special_needs_description: document.getElementById('reg-learner-needs-desc').value.trim(),
+            create_login: document.getElementById('reg-create-login').checked,
+            username: document.getElementById('reg-student-username')?.value.trim(),
+            password: document.getElementById('reg-student-password')?.value
+        };
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Registering & Assigning Subjects...';
+        alertBox.innerHTML = '';
+
+        try {
+            const res = await API.post('/api/parent/learners', payload);
+            this.closeRegisterLearnerModal();
+            await this.loadParentLearners();
+            alert(res.message || 'Child registered successfully!');
+        } catch (err) {
+            alertBox.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Register Child & Assign Subjects';
+        }
+    },
+
+    async openLearnerDetailModal(learnerId) {
+        const modal = document.getElementById('learner-detail-modal');
+        const body = document.getElementById('learner-detail-body');
+        const title = document.getElementById('detail-modal-title');
+
+        if (!modal) return;
+        modal.classList.add('active');
+        body.innerHTML = '<p style="text-align:center; padding:2rem; color:var(--text-muted);">Loading learner details...</p>';
+
+        try {
+            const res = await API.get(`/api/parent/learners/${learnerId}`);
+            const l = res.data;
+            title.innerHTML = `🎒 ${this.escapeHtml(l.full_name)} — ${this.escapeHtml(l.class_name)} (${l.class_code})`;
+
+            const subjectsListHtml = (l.subjects || []).map(s => `
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <strong style="color:var(--text-main); font-size:0.95rem;">${this.escapeHtml(s.subject_name)}</strong>
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">
+                            Code: <code>${this.escapeHtml(s.subject_code)}</code> &bull; Language: ${this.escapeHtml(s.language_of_instruction || 'English')}
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="font-weight:700; color:var(--primary); font-size:0.9rem;">${s.weekly_hours} hrs/wk</span>
+                        <span class="status-badge status-active" style="display:block; margin-top:4px; font-size:0.7rem;">${s.enrollment_status}</span>
+                    </div>
+                </div>
+            `).join('');
+
+            body.innerHTML = `
+                <div>
+                    <!-- Demographics Card -->
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:var(--radius-sm); padding:1rem; margin-bottom:1.5rem; font-size:0.88rem;">
+                        <div><strong>Age:</strong> ${l.age} years old</div>
+                        <div><strong>Date of Birth:</strong> ${l.date_of_birth}</div>
+                        <div><strong>Gender:</strong> ${l.gender}</div>
+                        <div><strong>Class Level:</strong> ${this.escapeHtml(l.class_name)} (Level ${l.class_level})</div>
+                        <div><strong>Enrolment Date:</strong> ${l.enrolment_date}</div>
+                        <div><strong>Parent/Guardian:</strong> ${this.escapeHtml(l.parent_name || '—')} (${this.escapeHtml(l.parent_district || 'Uganda')})</div>
+                    </div>
+
+                    ${l.special_learning_needs ? `
+                        <div class="alert alert-warning" style="margin-bottom:1.5rem;">
+                            <div>
+                                <strong>♿ Special Learning Accommodations:</strong>
+                                <p style="margin-top:4px; font-size:0.9rem;">${this.escapeHtml(l.special_needs_description || 'No specific notes provided.')}</p>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- Enrolled Subjects Section -->
+                    <div style="margin-bottom:1.5rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                            <h4 style="font-size:1.1rem;">📚 Active Enrolled Subjects (${(l.subjects || []).length})</h4>
+                            <span style="font-size:0.85rem; font-weight:700; color:var(--primary);">
+                                Total: ${l.total_weekly_hours || 0} Hours/Week
+                            </span>
+                        </div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:10px;">
+                            ${subjectsListHtml}
+                        </div>
+                    </div>
+
+                    <!-- Student Login Status -->
+                    <div style="border-top:1px solid var(--border-color); padding-top:1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                        <div>
+                            <strong>Student Independent Login:</strong>
+                            <span style="margin-left:6px; color:var(--text-muted); font-size:0.9rem;">
+                                ${l.learner_username ? `Active (@${this.escapeHtml(l.learner_username)})` : 'Not configured (Parent-guided mode)'}
+                            </span>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="btn btn-secondary btn-sm" onclick="App.openEditLearnerModal(${l.learner_id}); App.closeLearnerDetailModal();">✏️ Edit Details</button>
+                            <button class="btn btn-primary btn-sm" onclick="App.closeLearnerDetailModal()">Done</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } catch (err) {
+            body.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        }
+    },
+
+    closeLearnerDetailModal() {
+        const modal = document.getElementById('learner-detail-modal');
+        if (modal) modal.classList.remove('active');
+    },
+
+    async openEditLearnerModal(learnerId) {
+        const modal = document.getElementById('edit-learner-modal');
+        const alertBox = document.getElementById('edit-learner-alert');
+        const classSelect = document.getElementById('edit-learner-class');
+
+        if (!modal) return;
+        alertBox.innerHTML = '';
+
+        try {
+            const [res, classes] = await Promise.all([
+                API.get(`/api/parent/learners/${learnerId}`),
+                this.fetchClasses()
+            ]);
+
+            const l = res.data;
+            document.getElementById('edit-learner-id').value = l.learner_id;
+            document.getElementById('edit-learner-name').value = l.full_name;
+            document.getElementById('edit-learner-gender').value = l.gender;
+            document.getElementById('edit-learner-dob').value = l.date_of_birth;
+
+            classSelect.innerHTML = classes.map(c => `
+                <option value="${c.class_id}" ${c.class_id == l.class_id ? 'selected' : ''}>
+                    ${c.class_name} (${c.class_code}) — Ages ${c.min_age}–${c.max_age}
+                </option>
+            `).join('');
+
+            const chkNeeds = document.getElementById('edit-learner-special-needs');
+            chkNeeds.checked = !!l.special_learning_needs;
+            this.toggleSpecialNeedsDetails('edit');
+            document.getElementById('edit-learner-needs-desc').value = l.special_needs_description || '';
+
+            modal.classList.add('active');
+        } catch (err) {
+            alert('Failed to load learner details: ' + err.message);
+        }
+    },
+
+    closeEditLearnerModal() {
+        const modal = document.getElementById('edit-learner-modal');
+        if (modal) modal.classList.remove('active');
+    },
+
+    async handleSaveEditLearner(e) {
+        e.preventDefault();
+        const alertBox = document.getElementById('edit-learner-alert');
+        const submitBtn = document.getElementById('btn-update-learner');
+        const id = document.getElementById('edit-learner-id').value;
+
+        const payload = {
+            full_name: document.getElementById('edit-learner-name').value.trim(),
+            gender: document.getElementById('edit-learner-gender').value,
+            date_of_birth: document.getElementById('edit-learner-dob').value,
+            class_id: parseInt(document.getElementById('edit-learner-class').value, 10),
+            special_learning_needs: document.getElementById('edit-learner-special-needs').checked ? 1 : 0,
+            special_needs_description: document.getElementById('edit-learner-needs-desc').value.trim()
+        };
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Saving Changes...';
+        alertBox.innerHTML = '';
+
+        try {
+            await API.put(`/api/parent/learners/${id}`, payload);
+            this.closeEditLearnerModal();
+            await this.loadParentLearners();
+            alert('Learner profile updated successfully.');
+        } catch (err) {
+            alertBox.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Save Changes';
+        }
+    },
+
+    async toggleLearnerStatus(learnerId, currentStatus) {
+        const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+        const actionLabel = newStatus === 'inactive' ? 'deactivate' : 'activate';
+
+        if (!confirm(`Are you sure you want to ${actionLabel} this learner? Historical learning records will be safely preserved.`)) {
+            return;
+        }
+
+        try {
+            await API.patch(`/api/parent/learners/${learnerId}/status`, { status: newStatus });
+            await this.loadParentLearners();
+        } catch (err) {
+            alert('Failed to change status: ' + err.message);
+        }
+    },
+
+    openCreateStudentLoginModal(learnerId, learnerName) {
+        const modal = document.getElementById('learner-login-modal');
+        const alertBox = document.getElementById('learner-login-alert');
+        if (!modal) return;
+
+        alertBox.innerHTML = '';
+        document.getElementById('student-login-learner-id').value = learnerId;
+        document.getElementById('student-login-child-name').innerText = learnerName;
+        document.getElementById('student-login-username').value = learnerName.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 20);
+        document.getElementById('student-login-password').value = '';
+
+        modal.classList.add('active');
+    },
+
+    closeCreateStudentLoginModal() {
+        const modal = document.getElementById('learner-login-modal');
+        if (modal) modal.classList.remove('active');
+    },
+
+    async handleCreateStudentLogin(e) {
+        e.preventDefault();
+        const alertBox = document.getElementById('learner-login-alert');
+        const submitBtn = document.getElementById('btn-save-student-login');
+        const id = document.getElementById('student-login-learner-id').value;
+
+        const payload = {
+            username: document.getElementById('student-login-username').value.trim(),
+            password: document.getElementById('student-login-password').value
+        };
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Creating account...';
+        alertBox.innerHTML = '';
+
+        try {
+            await API.post(`/api/parent/learners/${id}/create-login`, payload);
+            this.closeCreateStudentLoginModal();
+            await this.loadParentLearners();
+            alert('Student account created successfully! The learner can now log in.');
+        } catch (err) {
+            alertBox.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Create Student Account';
         }
     },
 

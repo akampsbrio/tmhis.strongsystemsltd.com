@@ -374,7 +374,8 @@
             
             <div class="nav-group-title">Module Documentation</div>
             <a href="#mod-01" class="nav-link" onclick="Docs.navigate('mod-01')">✅ 01. Auth & RBAC</a>
-            <a href="#mod-roadmap" class="nav-link" onclick="Docs.navigate('mod-roadmap')">⏳ 02–13. Sprints Roadmap</a>
+            <a href="#mod-02" class="nav-link" onclick="Docs.navigate('mod-02')">✅ 02. Parents & Learners</a>
+            <a href="#mod-roadmap" class="nav-link" onclick="Docs.navigate('mod-roadmap')">⏳ 03–13. Sprints Roadmap</a>
             
             <div class="nav-group-title">Operations</div>
             <a href="#credentials" class="nav-link" onclick="Docs.navigate('credentials')">🔑 Demo Credentials</a>
@@ -713,6 +714,61 @@
                             <td>Unlock account locked from consecutive failed login attempts</td>
                             <td><code>administrator</code></td>
                         </tr>
+                        <!-- Module 02: Parents & Learners -->
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/parent/classes</code></td>
+                            <td>List primary school classes (P1–P7) with age guidelines & subject counts</td>
+                            <td><code>parent</code>, <code>admin</code>, <code>officer</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/parent/learners</code></td>
+                            <td>List registered home learners with class, age, and active subject counts</td>
+                            <td><code>parent</code>, <code>admin</code>, <code>teacher</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/parent/learners</code></td>
+                            <td>Register new child, enforce duplicate guard, and auto-allocate class subjects</td>
+                            <td><code>parent</code>, <code>admin</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/parent/learners/{id}</code></td>
+                            <td>Retrieve complete learner profile, enrolled subjects & weekly hours</td>
+                            <td><code>parent</code> (owner), <code>admin</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">PUT</span></td>
+                            <td><code>/api/parent/learners/{id}</code></td>
+                            <td>Update child demographics, special needs, or promote class (auto re-align subjects)</td>
+                            <td><code>parent</code> (owner), <code>admin</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">PATCH</span></td>
+                            <td><code>/api/parent/learners/{id}/status</code></td>
+                            <td>Deactivate / activate learner preserving historical progress</td>
+                            <td><code>parent</code> (owner), <code>admin</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/parent/learners/{id}/create-login</code></td>
+                            <td>Generate standalone student credentials for upper primary learners (P4–P7)</td>
+                            <td><code>parent</code> (owner), <code>admin</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/parent/profile</code></td>
+                            <td>Fetch parent extended homeschooling family demographics (NIN, District, Experience)</td>
+                            <td><code>parent</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">PUT</span></td>
+                            <td><code>/api/parent/profile</code></td>
+                            <td>Update parent homeschooling demographics and household details</td>
+                            <td><code>parent</code></td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -748,6 +804,30 @@
             <pre><code>php tests/test_sprint0_sprint1.php</code></pre>
         </section>
 
+        <!-- SECTION: MODULE 02 -->
+        <section id="sec-mod-02" class="doc-section">
+            <h1 class="doc-title">Module 02: Parent, Family & Learner Management</h1>
+            <p class="doc-subtitle">Status: <span class="badge badge-success">Completed & Tested</span></p>
+
+            <h2 class="section-heading">1. Implementation Summary</h2>
+            <ul>
+                <li><strong>Ugandan Primary Curriculum (NCDC P1–P7) Subjects Seeding:</strong> All 53 national standard subjects for Primary 1 through Primary 7 seeded into database with weekly hours, instruction language, and subject codes.</li>
+                <li><strong>Automatic Subject Allocation:</strong> When a child is registered into any class (P1–P7), all active syllabus subjects for that class are automatically enrolled in <code>learner_subjects</code> in a single database transaction.</li>
+                <li><strong>Religious Education Customization:</strong> Supports selecting <strong>Christian Religious Education (CRE)</strong> vs. <strong>Islamic Religious Education (IRE)</strong> tracks upon enrollment.</li>
+                <li><strong>Duplicate Learner Guard:</strong> Strict multi-column uniqueness check on <code>(parent_id, full_name, date_of_birth)</code> preventing accidental duplicate registrations while permitting same names under different families.</li>
+                <li><strong>Special Learning Needs Accommodations:</strong> Structured capture of accommodations (extra quiz time, high-contrast visual aids, dyscalculia support) to automatically feed downstream lesson delivery and assessment timers.</li>
+                <li><strong>Class Level Promotion & Realignment:</strong> Promoting a child from e.g. P3 to P4 seamlessly deactivates old subjects and auto-enrolls new class subjects while preserving historical records.</li>
+                <li><strong>Optional Standalone Student Login:</strong> Parents can provision independent login credentials (role: <code>learner</code>) for upper primary children (P4–P7) to complete quizzes and read lessons independently.</li>
+                <li><strong>Multi-Tenant Data Isolation:</strong> Parents are strictly restricted to their own children; teachers access assigned cohorts; administrators maintain global audit oversight.</li>
+                <li><strong>Parent Extended Profile:</strong> Management of Ugandan National ID (NIN), District, Household Size, and Homeschooling Experience level.</li>
+                <li><strong>Offline Caching (PWA):</strong> Service worker shell updated to <code>tmhis-shell-v11</code> ensuring learner profiles and timetables remain accessible offline.</li>
+            </ul>
+
+            <h2 class="section-heading">2. Verification & Automated Test Suite</h2>
+            <p>Run the Module 02 automated test runner (14/14 tests passing):</p>
+            <pre><code>php tests/test_sprint2_learners.php</code></pre>
+        </section>
+
         <!-- SECTION: ROADMAP -->
         <section id="sec-mod-roadmap" class="doc-section">
             <h1 class="doc-title">Sprint & Module Roadmap (01 – 13)</h1>
@@ -765,7 +845,7 @@
                     <tbody>
                         <tr><td>Sprint 0</td><td>Foundation, Architecture, PWA Shell & Error Handling</td><td><span class="badge badge-success">Completed</span></td></tr>
                         <tr><td>Sprint 1</td><td>Module 01: Authentication, Users and RBAC</td><td><span class="badge badge-success">Completed</span></td></tr>
-                        <tr><td>Sprint 2</td><td>Module 02: Parent, Family and Learner Management</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 2</td><td>Module 02: Parent, Family and Learner Management</td><td><span class="badge badge-success">Completed</span></td></tr>
                         <tr><td>Sprint 3</td><td>Module 03: Curriculum Management (P1–P7)</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
                         <tr><td>Sprint 4</td><td>Module 04: Learning Materials & Digital Delivery</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
                         <tr><td>Sprint 5</td><td>Module 05: Parental Guides & Flexible Scheduling</td><td><span class="badge badge-pending">Upcoming</span></td></tr>

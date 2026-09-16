@@ -24,6 +24,7 @@ spl_autoload_register(function (string $class) {
 
 use App\Controllers\AuthController;
 use App\Controllers\AdminUserController;
+use App\Controllers\LearnerController;
 use App\Utils\Response;
 use App\Utils\Router;
 
@@ -63,6 +64,17 @@ $router->post('/api/auth/reset-password', [AuthController::class, 'resetPassword
 $router->post('/api/auth/change-password', [AuthController::class, 'changePassword']);
 $router->post('/api/auth/update-avatar', [AuthController::class, 'updateAvatar']);
 $router->post('/api/auth/update-profile', [AuthController::class, 'updateProfile']);
+
+// Parent, Family & Learner Management (Module 02)
+$router->get('/api/parent/classes', [LearnerController::class, 'getClasses']);
+$router->get('/api/parent/learners', [LearnerController::class, 'index']);
+$router->post('/api/parent/learners', [LearnerController::class, 'create']);
+$router->get('/api/parent/learners/{id}', [LearnerController::class, 'show']);
+$router->put('/api/parent/learners/{id}', [LearnerController::class, 'update']);
+$router->patch('/api/parent/learners/{id}/status', [LearnerController::class, 'updateStatus']);
+$router->post('/api/parent/learners/{id}/create-login', [LearnerController::class, 'createLogin']);
+$router->get('/api/parent/profile', [LearnerController::class, 'getParentProfile']);
+$router->put('/api/parent/profile', [LearnerController::class, 'updateParentProfile']);
 
 // Administration User Management (Module 01 / 12)
 $router->get('/api/admin/users', [AdminUserController::class, 'index']);
