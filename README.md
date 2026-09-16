@@ -10,10 +10,11 @@
 
 The **Technology-Mediated Homeschooling Information System (TMHIS)** is an educational information system engineered to facilitate, structure, and monitor primary education (P1–P7) in home-based learning environments across Uganda. 
 
-- [**System Architecture & PWA Offline Engine**](docs/architecture.md)
-- [**Database Schema & Data Dictionary**](docs/database.md)
-- [**REST API Reference & Conventions**](docs/api.md)
-- [**Module Documentation (01 – 13)**](docs/modules/index.md)
+- [**Interactive Web Documentation Portal**](docs/index.html)
+- [**System Architecture & PWA Offline Engine**](docs/index.html#architecture)
+- [**Database Schema & Data Dictionary**](docs/index.html#database)
+- [**REST API Reference & Conventions**](docs/index.html#api)
+- [**Module Documentation (01 – 13)**](docs/index.html#mod-01)
 - [**Default Credentials**](CREDENTIALS.md)
 1. **Curriculum Alignment & Standardisation:** Ensuring home instruction adheres strictly to the National Curriculum Development Centre (NCDC) guidelines and Ministry of Education and Sports (MoES) competence frameworks.
 2. **Pedagogical Support for Parents:** Providing parents (who may lack formal teacher training) with daily lesson guides, suggested schedules, and instructional strategies.

@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TMHIS Documentation — Makerere University MIS Project</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📖</text></svg>">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #eff6ff;
+            --secondary: #0f172a;
+            --sidebar-bg: #1e293b;
+            --sidebar-text: #94a3b8;
+            --sidebar-active: #ffffff;
+            --sidebar-active-bg: #3b82f6;
+            --bg-page: #f8fafc;
+            --bg-card: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --code-bg: #0f172a;
+            --code-text: #f8fafc;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        aside.sidebar {
+            width: 290px;
+            background: var(--sidebar-bg);
+            color: var(--sidebar-text);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+            overflow-y: auto;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+        }
+
+        .sidebar-header {
+            padding: 1.5rem 1.2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            background: #0f172a;
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .sidebar-badge {
+            background: #2563eb;
+            color: #fff;
+            font-weight: 800;
+            font-size: 0.9rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .sidebar-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .sidebar-subtitle {
+            font-size: 0.72rem;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        .sidebar-nav {
+            padding: 1.2rem 0;
+            flex: 1;
+        }
+
+        .nav-group-title {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748b;
+            padding: 0.6rem 1.2rem;
+            font-weight: 700;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0.65rem 1.2rem;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-link:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .nav-link.active {
+            color: #fff;
+            background: rgba(37, 99, 235, 0.25);
+            border-left-color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .sidebar-footer {
+            padding: 1.2rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            background: #0f172a;
+        }
+
+        .btn-back-app {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 0.6rem;
+            background: #2563eb;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .btn-back-app:hover { background: #1d4ed8; }
+
+        /* Main Content */
+        main.content {
+            margin-left: 290px;
+            flex: 1;
+            padding: 2.5rem 3rem;
+            max-width: 1100px;
+        }
+
+        .doc-section {
+            display: none;
+            animation: fadeIn 0.25s ease-in;
+        }
+        .doc-section.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Typography & Components */
+        h1.doc-title {
+            font-size: 2.2rem;
+            color: var(--secondary);
+            margin-bottom: 0.5rem;
+            line-height: 1.2;
+        }
+
+        .doc-subtitle {
+            font-size: 1.05rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            padding-bottom: 1.2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h2.section-heading {
+            font-size: 1.4rem;
+            color: var(--secondary);
+            margin: 2rem 0 1rem 0;
+            padding-bottom: 0.4rem;
+            border-bottom: 2px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        h3.subheading {
+            font-size: 1.15rem;
+            color: #334155;
+            margin: 1.4rem 0 0.6rem 0;
+        }
+
+        p, li {
+            font-size: 0.96rem;
+            line-height: 1.7;
+            color: #334155;
+            margin-bottom: 0.8rem;
+        }
+
+        ul, ol {
+            padding-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Callout Box */
+        .callout {
+            background: #eff6ff;
+            border-left: 4px solid var(--primary);
+            padding: 1rem 1.2rem;
+            border-radius: 0 8px 8px 0;
+            margin: 1.2rem 0;
+        }
+        .callout-title {
+            font-weight: 700;
+            color: #1e40af;
+            margin-bottom: 0.3rem;
+            font-size: 0.95rem;
+        }
+
+        /* Cards & Grids */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+            margin: 1.2rem 0;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .card h4 {
+            font-size: 1.05rem;
+            color: var(--secondary);
+            margin-bottom: 0.4rem;
+        }
+
+        /* Tables */
+        .table-responsive {
+            overflow-x: auto;
+            margin: 1.4rem 0;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            text-align: left;
+        }
+
+        th {
+            background: #f8fafc;
+            padding: 0.8rem 1rem;
+            font-weight: 700;
+            color: #475569;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            color: #334155;
+        }
+
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: #f8fafc; }
+
+        /* Code Blocks */
+        pre {
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 1.2rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: Consolas, "Liberation Mono", Courier, monospace;
+            font-size: 0.88rem;
+            line-height: 1.5;
+            margin: 1rem 0;
+        }
+
+        code {
+            font-family: Consolas, "Liberation Mono", Courier, monospace;
+            background: #e2e8f0;
+            color: #0f172a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.88rem;
+        }
+
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+        }
+        .badge-success { background: #dcfce7; color: #15803d; }
+        .badge-pending { background: #fef3c7; color: #b45309; }
+        .badge-method { background: #1e40af; color: #fff; padding: 2px 6px; font-size: 0.7rem; border-radius: 4px; }
+
+        /* Mobile Responsive */
+        @media (max-width: 900px) {
+            aside.sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            main.content {
+                margin-left: 0;
+                padding: 1.5rem;
+            }
+            body {
+                flex-direction: column;
+            }
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="#overview" class="sidebar-brand" onclick="Docs.navigate('overview')">
+                <span class="sidebar-badge">TMHIS</span>
+                <div>
+                    <div class="sidebar-title">System Docs</div>
+                    <div class="sidebar-subtitle">Makerere University (MIS)</div>
+                </div>
+            </a>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-group-title">General</div>
+            <a href="#overview" class="nav-link active" onclick="Docs.navigate('overview')">📌 Project Overview</a>
+            <a href="#architecture" class="nav-link" onclick="Docs.navigate('architecture')">🏗️ System Architecture</a>
+            <a href="#offline-sync" class="nav-link" onclick="Docs.navigate('offline-sync')">🔄 PWA Offline & Sync</a>
+            
+            <div class="nav-group-title">Technical Specifications</div>
+            <a href="#database" class="nav-link" onclick="Docs.navigate('database')">🗄️ Database Schema (40 Tables)</a>
+            <a href="#api" class="nav-link" onclick="Docs.navigate('api')">🌐 REST API Reference</a>
+            
+            <div class="nav-group-title">Module Documentation</div>
+            <a href="#mod-01" class="nav-link" onclick="Docs.navigate('mod-01')">✅ 01. Auth & RBAC</a>
+            <a href="#mod-roadmap" class="nav-link" onclick="Docs.navigate('mod-roadmap')">⏳ 02–13. Sprints Roadmap</a>
+            
+            <div class="nav-group-title">Operations</div>
+            <a href="#credentials" class="nav-link" onclick="Docs.navigate('credentials')">🔑 Demo Credentials</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="/" class="btn-back-app">← Back to TMHIS Web App</a>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="content">
+
+        <!-- SECTION: OVERVIEW -->
+        <section id="sec-overview" class="doc-section active">
+            <h1 class="doc-title">Technology-Mediated Homeschooling Information System (TMHIS)</h1>
+            <p class="doc-subtitle">A Primary Education (P1–P7) Learning & Governance Platform for the Ugandan Syllabus</p>
+
+            <div class="callout">
+                <div class="callout-title">🎓 Academic Project Context</div>
+                <p>This system is designed and implemented as a <strong>Plan B Master's Research Project</strong> for the Degree of <strong>Master of Science in Information Systems (MIS)</strong> at <strong>Makerere University</strong>, Kampala, Uganda.</p>
+            </div>
+
+            <h2 class="section-heading">1. Core Research Problem & Objectives</h2>
+            <p>Homeschooling and home-supported primary education across Uganda face systemic constraints:</p>
+            <ul>
+                <li><strong>Curriculum Fragmentation:</strong> Need for strict alignment with the <strong>National Curriculum Development Centre (NCDC)</strong> and <strong>Ministry of Education and Sports (MoES)</strong> competency frameworks for P1 to P7.</li>
+                <li><strong>Parental Pedagogy Gap:</strong> Parents facilitating home learning require structured lesson guides, suggested weekly schedules, and teaching tips.</li>
+                <li><strong>Intermittent Connectivity:</strong> Rural and peri-urban areas require a robust <strong>Offline-First Progressive Web App (PWA)</strong> capable of functioning seamlessly during internet blackouts.</li>
+                <li><strong>Verification & Compliance:</strong> Curriculum officers and teachers need automated scoring, lesson tracking, and aggregate compliance analytics.</li>
+            </ul>
+
+            <h2 class="section-heading">2. The Five System Stakeholders</h2>
+            <div class="grid-2">
+                <div class="card">
+                    <h4>🎒 Learner (P1–P7)</h4>
+                    <p>Accesses curriculum lessons, completes interactive quizzes online/offline, and views personal progress badges.</p>
+                </div>
+                <div class="card">
+                    <h4>👨‍👩‍👧 Parent / Guardian</h4>
+                    <p>Registers learners, downloads daily lesson guides, customizes weekly schedules, and monitors child progress.</p>
+                </div>
+                <div class="card">
+                    <h4>👩‍🏫 Supporting Teacher</h4>
+                    <p>Oversees assigned home cohorts, grades open-ended assignments, and enters qualitative lesson observations.</p>
+                </div>
+                <div class="card">
+                    <h4>🏛️ Curriculum Officer (NCDC)</h4>
+                    <p>Sets up curriculum terms, approves learning materials, issues circulars, and tracks national compliance.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: ARCHITECTURE -->
+        <section id="sec-architecture" class="doc-section">
+            <h1 class="doc-title">System Architecture</h1>
+            <p class="doc-subtitle">Decoupled API-First Layered Architecture with Offline-First Client Shell</p>
+
+            <h2 class="section-heading">Architectural Overview</h2>
+            <pre><code>┌─────────────────────────────────────────────────────────────────────────┐
+│                           CLIENT LAYER (PWA)                            │
+│                                                                         │
+│  ┌───────────────────────┐  ┌────────────────────────────────────────┐  │
+│  │    Service Worker     │  │           Application Shell            │  │
+│  │ (Cache Storage Assets)│  │      (Responsive Single Page App)      │  │
+│  └───────────────────────┘  └────────────────────────────────────────┘  │
+│                                                 │                       │
+│  ┌──────────────────────────────────────────────┴────────────────────┐  │
+│  │                     Client Storage & State Engine                 │  │
+│  │  - IndexedDB: Cached lessons, syllabus metadata, quiz questions   │  │
+│  │  - Local Sync Queue: Pending offline mutations + UUID keys         │  │
+│  │  - Network State Monitor: Automatic reconnection & sync flush     │  │
+│  └──────────────────────────────────────┬────────────────────────────┘  │
+└─────────────────────────────────────────┼───────────────────────────────┘
+                                          │ HTTPS JSON API (REST)
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    APPLICATION LAYER (PHP 8.2 MVC)                      │
+│                                                                         │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │ Middleware Pipeline: Auth (Session/Bearer), RBAC, Rate Limiting   │  │
+│  └──────────────────────────────────┬────────────────────────────────┘  │
+│                                     ▼                                   │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │ Controllers (Route dispatching, Input validation, JSON Responses) │  │
+│  └──────────────────────────────────┬────────────────────────────────┘  │
+│                                     ▼                                   │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │ Domain & Service Logic:                                           │  │
+│  │  - Server-Authoritative Auto-Scoring Engine                       │  │
+│  │  - Idempotent Sync Processor (UUID de-duplication)                │  │
+│  │  - Parent-Child / Teacher-Learner Boundary Authorization          │  │
+│  │  - Curriculum Coverage & Compliance Computation                   │  │
+│  │  - Comprehensive Audit Logger                                     │  │
+│  └──────────────────────────────────┬────────────────────────────────┘  │
+│                                     ▼                                   │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │ Models & Data Layer (PDO Prepared Statements, ACID Transactions)  │  │
+│  └──────────────────────────────────┬────────────────────────────────┘  │
+└─────────────────────────────────────┼───────────────────────────────────┘
+                                      ▼
+                      ┌───────────────────────────────┐
+                      │    MySQL 8.0 (InnoDB, JSON)    │
+                      └───────────────────────────────┘</code></pre>
+
+            <h2 class="section-heading">Key Backend Design Patterns</h2>
+            <ul>
+                <li><strong>Front Controller & Dynamic Router:</strong> All requests route through <code>index.php</code> and <code>Router.php</code> with parameter extraction.</li>
+                <li><strong>Singleton Database Connection:</strong> Enforces strict PDO prepared statements, UTF-8 charset, and Kampala (+03:00) session timezone.</li>
+                <li><strong>Standard Response Formatter:</strong> Unified JSON envelopes with proper HTTP status codes.</li>
+                <li><strong>Layered Middleware:</strong> Enforces authentication, role barriers, and rate-limiting before requests reach business logic.</li>
+            </ul>
+        </section>
+
+        <!-- SECTION: OFFLINE & SYNC -->
+        <section id="sec-offline-sync" class="doc-section">
+            <h1 class="doc-title">PWA Offline Mode & Sync Protocol</h1>
+            <p class="doc-subtitle">Ensuring uninterrupted home education during power and internet outages</p>
+
+            <h2 class="section-heading">1. Service Worker & Application Shell</h2>
+            <p>The Service Worker (<code>sw.js</code>) intercepts all asset requests. It uses a <strong>Cache-First with Network Fallback</strong> strategy for UI assets (HTML, CSS, JS, fonts) and a <strong>Network-First with Offline JSON fallback</strong> for API endpoints.</p>
+
+            <h2 class="section-heading">2. IndexedDB Client Storage</h2>
+            <p>While offline, the application stores:</p>
+            <ul>
+                <li>Downloaded P1–P7 lesson text, worksheets, and teacher notes.</li>
+                <li>Assessment quizzes and questions.</li>
+                <li>Learner answers and offline attempt progress.</li>
+                <li>Local FIFO Synchronization Queue.</li>
+            </ul>
+
+            <h2 class="section-heading">3. Idempotent Synchronization Algorithm</h2>
+            <div class="callout">
+                <div class="callout-title">🔒 Idempotency Guarantee</div>
+                <p>Every mutation performed offline receives a unique client UUID (<code>client_transaction_uuid</code>). If a network timeout occurs during sync and the client retries, the server recognizes the UUID and returns the previous acknowledgment without duplicate processing.</p>
+            </div>
+
+            <ol>
+                <li>Client detects internet restoration via <code>window.addEventListener('online')</code>.</li>
+                <li>Sync lock is acquired to prevent concurrent sync races.</li>
+                <li>Client sends oldest pending queue mutation to <code>/api/sync</code>.</li>
+                <li>Server checks UUID in <code>sync_log</code> table:
+                    <ul>
+                        <li>If processed previously: returns stored ACK immediately.</li>
+                        <li>If new: validates payload, verifies authorization, recalculates scores, and commits in an ACID transaction.</li>
+                    </ul>
+                </li>
+                <li>Client receives ACK and removes item from local IndexedDB queue.</li>
+            </ol>
+        </section>
+
+        <!-- SECTION: DATABASE -->
+        <section id="sec-database" class="doc-section">
+            <h1 class="doc-title">Database Schema & Dictionary</h1>
+            <p class="doc-subtitle">MySQL 8.0 Relational Design with 40 Tables, Foreign Keys, and Views</p>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Tables</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Identity & RBAC</strong></td>
+                            <td><code>users</code>, <code>roles</code>, <code>permissions</code>, <code>role_permissions</code>, <code>user_permissions</code>, <code>password_resets</code></td>
+                            <td>Authentication, role mappings, hashed tokens, lockout counters.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Stakeholders</strong></td>
+                            <td><code>parents</code>, <code>learners</code>, <code>teachers</code>, <code>curriculum_officers</code></td>
+                            <td>Actor profiles, phone numbers, districts, subject specialties.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Curriculum (P1–P7)</strong></td>
+                            <td><code>classes</code>, <code>subjects</code>, <code>curriculum_terms</code>, <code>lessons</code>, <code>learner_subjects</code></td>
+                            <td>Primary classes, subject definitions, lesson competencies.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Materials & Guides</strong></td>
+                            <td><code>learning_materials</code>, <code>material_versions</code>, <code>parental_guides</code>, <code>parental_guide_versions</code></td>
+                            <td>Educational assets, version approval workflows, parental walkthroughs.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Assessments</strong></td>
+                            <td><code>assessments</code>, <code>assessment_questions</code>, <code>assessment_options</code>, <code>assessment_attempts</code>, <code>assessment_answers</code>, <code>assessment_results</code></td>
+                            <td>Formative & summative tests, auto-scoring, rubrics, question banks.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Offline & Audit</strong></td>
+                            <td><code>devices</code>, <code>sync_queue</code>, <code>sync_log</code>, <code>learning_activities</code>, <code>notifications</code>, <code>messages</code>, <code>message_threads</code>, <code>audit_trail</code></td>
+                            <td>Sync tracking with UUID idempotency, activity logs, system audit.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SECTION: API REFERENCE -->
+        <section id="sec-api" class="doc-section">
+            <h1 class="doc-title">REST API Reference</h1>
+            <p class="doc-subtitle">Standardized JSON endpoints with role authorization</p>
+
+            <h2 class="section-heading">Standard Response Envelope</h2>
+            <pre><code>{
+  "success": true,
+  "data": { ... },
+  "message": "Operation completed successfully.",
+  "errors": []
+}</code></pre>
+
+            <h2 class="section-heading">Authentication Endpoints</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Endpoint</th>
+                            <th>Description</th>
+                            <th>Auth</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/auth/login</code></td>
+                            <td>Email/password sign-in with lockout protection</td>
+                            <td>Public</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/auth/register-parent</code></td>
+                            <td>Parent self-registration and family initialization</td>
+                            <td>Public</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/auth/me</code></td>
+                            <td>Retrieve current authenticated user and permissions</td>
+                            <td>Bearer / Session</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/auth/logout</code></td>
+                            <td>Terminate session and invalidate tokens</td>
+                            <td>Bearer / Session</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/auth/forgot-password</code></td>
+                            <td>Generate 1-hour single-use password reset token</td>
+                            <td>Public</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/auth/reset-password</code></td>
+                            <td>Reset password using verified token</td>
+                            <td>Public</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/auth/change-password</code></td>
+                            <td>Change password with old password verification</td>
+                            <td>Bearer / Session</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 class="section-heading">Administration Endpoints</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Endpoint</th>
+                            <th>Description</th>
+                            <th>Required Role</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/admin/users</code></td>
+                            <td>Paginated user list with role and status filters</td>
+                            <td><code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/admin/users</code></td>
+                            <td>Create teacher, officer, parent, or admin account</td>
+                            <td><code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">PATCH</span></td>
+                            <td><code>/api/admin/users/{id}/status</code></td>
+                            <td>Set user status (active, suspended, inactive)</td>
+                            <td><code>administrator</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SECTION: MODULE 01 -->
+        <section id="sec-mod-01" class="doc-section">
+            <h1 class="doc-title">Module 01: Authentication, Users & RBAC</h1>
+            <p class="doc-subtitle">Status: <span class="badge badge-success">Completed & Tested</span></p>
+
+            <h2 class="section-heading">Implementation Summary</h2>
+            <ul>
+                <li><strong>Multi-role Login:</strong> Authenticates all 5 roles and routes to their respective dashboards.</li>
+                <li><strong>Parent Self-Registration:</strong> Transaction-safe creation of user credentials and linked parent profile.</li>
+                <li><strong>Security Hardening:</strong>
+                    <ul>
+                        <li>Bcrypt password hashing.</li>
+                        <li>Account lockout after 5 consecutive failed attempts (15 minutes).</li>
+                        <li>IP Rate-limiting on authentication routes.</li>
+                        <li>Single-use, time-expiring reset tokens.</li>
+                    </ul>
+                </li>
+                <li><strong>Client SPA Route Guards:</strong> Automatically redirects authenticated users to their dashboards and shields private screens.</li>
+                <li><strong>Audit Trail Logging:</strong> Logs every login, logout, password change, and status alteration.</li>
+            </ul>
+
+            <h2 class="section-heading">Verification & Test Suite</h2>
+            <p>Run the automated test runner to verify all 14 acceptance criteria:</p>
+            <pre><code>php tests/test_sprint0_sprint1.php</code></pre>
+        </section>
+
+        <!-- SECTION: ROADMAP -->
+        <section id="sec-mod-roadmap" class="doc-section">
+            <h1 class="doc-title">Sprint & Module Roadmap (01 – 13)</h1>
+            <p class="doc-subtitle">Master Development Plan sequence for TMHIS</p>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Sprint</th>
+                            <th>Module Title</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Sprint 0</td><td>Foundation, Architecture, PWA Shell & Error Handling</td><td><span class="badge badge-success">Completed</span></td></tr>
+                        <tr><td>Sprint 1</td><td>Module 01: Authentication, Users and RBAC</td><td><span class="badge badge-success">Completed</span></td></tr>
+                        <tr><td>Sprint 2</td><td>Module 02: Parent, Family and Learner Management</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 3</td><td>Module 03: Curriculum Management (P1–P7)</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 4</td><td>Module 04: Learning Materials & Digital Delivery</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 5</td><td>Module 05: Parental Guides & Flexible Scheduling</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 6</td><td>Module 06: Online & Offline Assessments & Scoring</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 7</td><td>Module 07: PWA Offline Architecture & Synchronisation</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 8</td><td>Module 08: Progress Tracking & Dashboards</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 9</td><td>Module 09: Reporting & Compliance Analytics</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 10</td><td>Module 10: In-App Notifications Engine</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 11</td><td>Module 11: Messaging & Curriculum Circulars</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 12</td><td>Module 12: Audit Trail & Technical Administration</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 13</td><td>Module 13: Testing, Validation & Dissertation Evidence</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SECTION: CREDENTIALS -->
+        <section id="sec-credentials" class="doc-section">
+            <h1 class="doc-title">Demo & Administrative Credentials</h1>
+            <p class="doc-subtitle">Seeded accounts for system evaluation and testing</p>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Role</th>
+                            <th>Email</th>
+                            <th>Password</th>
+                            <th>Access Scope</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Administrator</strong></td>
+                            <td><code>admin@tmhis.org</code></td>
+                            <td><code>Admin@2026!</code></td>
+                            <td>Technical Administration, User Management, Audit Logs</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Curriculum Officer</strong></td>
+                            <td><code>officer.ncdc@tmhis.org</code></td>
+                            <td><code>Officer@2026!</code></td>
+                            <td>NCDC Curriculum Management, Material Review & Approval</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Teacher</strong></td>
+                            <td><code>teacher.mukasa@tmhis.org</code></td>
+                            <td><code>Teacher@2026!</code></td>
+                            <td>Assigned Learners Oversight, Assessment Review & Grading</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Parent</strong></td>
+                            <td><code>parent.namubiru@tmhis.org</code></td>
+                            <td><code>Parent@2026!</code></td>
+                            <td>Home Learning Facilitation, Learner Management, Schedules</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Docs Interactive Controller -->
+    <script>
+        const Docs = {
+            navigate(sectionId) {
+                // Update nav links
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.classList.toggle('active', link.getAttribute('href') === `#${sectionId}`);
+                });
+
+                // Update section visibility
+                document.querySelectorAll('.doc-section').forEach(sec => {
+                    sec.classList.toggle('active', sec.id === `sec-${sectionId}`);
+                });
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            },
+
+            init() {
+                const hash = (window.location.hash || '#overview').replace('#', '');
+                this.navigate(hash);
+
+                window.addEventListener('hashchange', () => {
+                    const h = (window.location.hash || '#overview').replace('#', '');
+                    this.navigate(h);
+                });
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => Docs.init());
+    </script>
+</body>
+</html>
