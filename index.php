@@ -26,6 +26,7 @@ use App\Controllers\AuthController;
 use App\Controllers\AdminUserController;
 use App\Controllers\CurriculumController;
 use App\Controllers\LearnerController;
+use App\Controllers\MaterialController;
 use App\Utils\Response;
 use App\Utils\Router;
 
@@ -90,6 +91,7 @@ $router->post('/api/admin/users/{id}/unlock', [AdminUserController::class, 'unlo
 // Curriculum Management (Module 03)
 $router->get('/api/curriculum/classes', [CurriculumController::class, 'getClasses']);
 $router->get('/api/curriculum/classes/{id}/subjects', [CurriculumController::class, 'getSubjects']);
+$router->get('/api/curriculum/subjects', [CurriculumController::class, 'getAllSubjects']);
 $router->get('/api/curriculum/subjects/{id}', [CurriculumController::class, 'getSubject']);
 $router->get('/api/curriculum/subjects/{id}/lessons', [CurriculumController::class, 'getLessons']);
 $router->get('/api/curriculum/lessons/{id}', [CurriculumController::class, 'getLesson']);
@@ -99,6 +101,17 @@ $router->post('/api/officer/lessons', [CurriculumController::class, 'createLesso
 $router->put('/api/officer/lessons/{id}', [CurriculumController::class, 'updateLesson']);
 $router->post('/api/officer/lessons/{id}/retire', [CurriculumController::class, 'retireLesson']);
 $router->post('/api/officer/lessons/reorder', [CurriculumController::class, 'reorderLessons']);
+
+// Learning Materials & Digital Delivery (Module 04)
+$router->get('/api/materials', [MaterialController::class, 'getMaterials']);
+$router->get('/api/materials/{id}', [MaterialController::class, 'getMaterial']);
+$router->get('/api/materials/{id}/download', [MaterialController::class, 'downloadMaterial']);
+$router->post('/api/officer/materials', [MaterialController::class, 'uploadMaterial']);
+$router->post('/api/officer/materials/{id}/new-version', [MaterialController::class, 'uploadNewVersion']);
+$router->put('/api/officer/materials/{id}', [MaterialController::class, 'updateMaterial']);
+$router->post('/api/officer/materials/{id}/submit', [MaterialController::class, 'submitMaterial']);
+$router->post('/api/officer/materials/{id}/approve', [MaterialController::class, 'approveMaterial']);
+$router->post('/api/officer/materials/{id}/retire', [MaterialController::class, 'retireMaterial']);
 
 // Dispatch router
 $router->dispatch();

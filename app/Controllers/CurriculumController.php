@@ -55,6 +55,45 @@ class CurriculumController
     }
 
     /**
+     * GET /api/curriculum/subjects
+     * List all active curriculum subjects across all primary classes
+     */
+    public function getAllSubjects(): void
+    {
+        AuthMiddleware::handle();
+        $db = Database::getConnection();
+
+        $stmt = $db->query('
+            SELECT 
+                s.subject_id,
+                s.class_id,
+                s.subject_name,
+                s.subject_code,
+                s.description,
+                s.language_of_instruction,
+                s.weekly_hours,
+                s.is_active,
+                c.class_name,
+                c.class_code,
+                c.level as class_level
+            FROM subjects s
+            JOIN classes c ON s.class_id = c.class_id
+            WHERE s.is_active = 1 AND c.is_active = 1
+            ORDER BY c.level ASC, s.subject_name ASC
+        ');
+        $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($subjects as &$subj) {
+            $subj['subject_id'] = (int)$subj['subject_id'];
+            $subj['class_id'] = (int)$subj['class_id'];
+            $subj['weekly_hours'] = (float)$subj['weekly_hours'];
+            $subj['class_level'] = (int)$subj['class_level'];
+        }
+
+        Response::success($subjects, 'All curriculum subjects retrieved successfully.');
+    }
+
+    /**
      * GET /api/curriculum/classes/{id}/subjects
      * List all active subjects under a specific primary class
      */

@@ -81,6 +81,9 @@ const App = {
                                 <a href="#curriculum-explorer" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📚</span> Curriculum Explorer
                                 </a>
+                                <a href="#officer-materials" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📁</span> Learning Materials
+                                </a>
                                 <a href="#admin-audit" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>🛡️</span> Security & Audit Log
                                 </a>
@@ -95,6 +98,9 @@ const App = {
                                 <a href="#curriculum-explorer" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📚</span> Curriculum Syllabus
                                 </a>
+                                <a href="#learner-materials" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📁</span> Digital Materials
+                                </a>
                                 <a href="#parent-guides" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📖</span> Parental Guides
                                 </a>
@@ -108,6 +114,9 @@ const App = {
                             ${user.role_code === 'learner' ? `
                                 <a href="#curriculum-explorer" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📚</span> My Subjects & Syllabus
+                                </a>
+                                <a href="#learner-materials" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📁</span> Learning Materials
                                 </a>
                                 <a href="#learner-lessons" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>▶️</span> Continue Lessons
@@ -125,6 +134,9 @@ const App = {
                                 </a>
                                 <a href="#curriculum-explorer" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📚</span> Curriculum Syllabus
+                                </a>
+                                <a href="#officer-materials" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📁</span> Learning Materials
                                 </a>
                                 <a href="#teacher-assessments" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>✅</span> Review & Grading
@@ -245,6 +257,8 @@ const App = {
             this.renderOfficerDashboard(content);
         } else if (currentHash === '#curriculum-explorer' || currentHash === '#officer-classes' || currentHash === '#learner-subjects') {
             this.renderCurriculumExplorer(content);
+        } else if (currentHash === '#officer-materials' || currentHash === '#learner-materials' || currentHash === '#learning-materials' || currentHash === '#materials-library') {
+            this.renderMaterials(content);
         } else {
             this.renderGenericDashboard(content, currentHash);
         }
@@ -1866,14 +1880,17 @@ const App = {
 
                     <div class="learner-card-actions">
                         <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="App.openLearnerDetailModal(${l.learner_id})">
-                            👁️ Profile & Subjects
+                            👁️ Profile
+                        </button>
+                        <button class="btn btn-primary btn-sm" style="flex:1;" onclick="App.viewChildMaterials(${l.learner_id})" title="View learning materials for ${this.escapeHtml(l.full_name)} (P1 to ${l.class_code || 'P' + l.class_level})">
+                            📁 Materials
                         </button>
                         <button class="btn btn-secondary btn-sm" onclick="App.openEditLearnerModal(${l.learner_id})" title="Edit Learner">
-                            ✏️ Edit
+                            ✏️
                         </button>
                         ${!l.learner_username ? `
                             <button class="btn btn-secondary btn-sm" onclick="App.openCreateStudentLoginModal(${l.learner_id}, '${this.escapeHtml(l.full_name)}')" title="Create Student Login">
-                                🔑 Login
+                                🔑
                             </button>
                         ` : ''}
                         <button class="btn btn-secondary btn-sm" onclick="App.toggleLearnerStatus(${l.learner_id}, '${l.status}')" title="${isInactive ? 'Activate Learner' : 'Deactivate Learner'}">
@@ -3153,6 +3170,1148 @@ const App = {
         } catch (err) {
             alert('Failed to reorder lessons: ' + err.message);
         }
+    },
+
+    // =========================================================================
+    // MODULE 04: LEARNING MATERIALS & DIGITAL CONTENT DELIVERY (UP TO 300MB)
+    // =========================================================================
+
+    materialsState: {
+        materials: [],
+        pagination: { total: 0, page: 1, limit: 12, pages: 1 },
+        classes: [],
+        allSubjects: [],
+        subjects: [],
+        lessons: [],
+        filterClassId: '',
+        filterSubjectId: '',
+        filterLessonId: '',
+        filterType: '',
+        filterStatus: '',
+        activeTab: 'all',
+        searchTerm: '',
+        activePreviewMaterial: null,
+        selectedLearnerId: '',
+        selectedLearner: null,
+        maxClassLevel: null,
+        parentLearners: []
+    },
+
+    async renderMaterials(container) {
+        const user = Auth.getUser();
+        const role = Auth.getRole();
+        const isStaff = ['curriculum_officer', 'administrator'].includes(role);
+        const defaultDash = this.getDefaultDashboard();
+
+        // Load parent learners if user is parent
+        let parentLearners = [];
+        if (role === 'parent') {
+            try {
+                const lRes = await API.get('/api/parent/learners');
+                parentLearners = Array.isArray(lRes.data) ? lRes.data : (lRes.data?.learners || []);
+                this.materialsState.parentLearners = parentLearners;
+                
+                // If a learner was previously selected or queued, resolve it
+                if (this.materialsState.selectedLearnerId) {
+                    const matchedChild = parentLearners.find(l => String(l.learner_id) === String(this.materialsState.selectedLearnerId));
+                    if (matchedChild) {
+                        this.materialsState.selectedLearner = matchedChild;
+                        this.materialsState.maxClassLevel = parseInt(matchedChild.class_level || matchedChild.level || 7, 10);
+                    }
+                }
+            } catch (err) {
+                console.warn('Could not load parent learners:', err);
+            }
+        }
+
+        container.innerHTML = `
+            <div style="max-width:1300px; margin:0 auto; padding-bottom: 2rem;">
+                <div class="curriculum-header-bar" style="margin-bottom:1.5rem;">
+                    <div>
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <h2 style="margin:0;">📁 Learning Materials & Digital Content</h2>
+                            <span class="badge badge-success" style="font-size:0.75rem;">300 MB Limit</span>
+                            <span class="badge badge-primary" style="font-size:0.75rem;">SHA-256 Checksums</span>
+                            <span class="badge badge-secondary" style="font-size:0.75rem;">Multi-Format Engine</span>
+                        </div>
+                        <p style="color:var(--text-muted); margin-top:4px;">
+                            Uganda Primary Curriculum Digital Assets • PDF, DOCX, MP4, WebM, MP3, WAV, PNG, SVG & Interactive Media
+                        </p>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <a href="${defaultDash}" class="btn btn-secondary btn-sm">← Back to Dashboard</a>
+                        ${isStaff ? `
+                            <button class="btn btn-primary btn-sm" onclick="App.openUploadMaterialModal()">
+                                ➕ Upload Material (300MB Max)
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <div id="materials-alert" style="margin-bottom:1rem;"></div>
+
+                <!-- Status & Child Scope Switchers Bar -->
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:1.5rem;">
+                    <!-- Status Pipeline Tabs (Resources Switcher) -->
+                    <div class="materials-pipeline-tabs" style="margin:0;">
+                        <button class="pipeline-tab active" id="tab-mat-all" onclick="App.setMaterialsTab('all')">
+                            <span>📁</span> All Resources
+                        </button>
+                        <button class="pipeline-tab" id="tab-mat-approved" onclick="App.setMaterialsTab('approved')">
+                            <span>✅</span> Approved & Active
+                        </button>
+                        <button class="pipeline-tab" id="tab-mat-submitted" onclick="App.setMaterialsTab('submitted')">
+                            <span>⏳</span> In Review
+                        </button>
+                        ${isStaff ? `
+                            <button class="pipeline-tab" id="tab-mat-draft" onclick="App.setMaterialsTab('draft')">
+                                <span>📝</span> Drafts
+                            </button>
+                            <button class="pipeline-tab" id="tab-mat-retired" onclick="App.setMaterialsTab('retired')">
+                                <span>🚫</span> Retired
+                            </button>
+                        ` : ''}
+                    </div>
+
+                    ${role === 'parent' && parentLearners.length > 0 ? `
+                        <!-- Quick Switch Child Pills Placed Next to Resources Switcher -->
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Child Scope:</span>
+                            <div class="quick-child-pills-container">
+                                <button type="button" 
+                                        id="pill-child-all"
+                                        class="quick-child-pill ${!this.materialsState.selectedLearnerId ? 'active-all' : ''}" 
+                                        onclick="App.handleParentChildSelect('')"
+                                        title="Browse all materials across P1–P7">
+                                    <span class="child-pill-icon">🌟</span>
+                                    <span>All Materials</span>
+                                </button>
+                                ${parentLearners.map(l => {
+                                    const isSelected = String(this.materialsState.selectedLearnerId) === String(l.learner_id);
+                                    const classTag = l.class_code || ('P' + (l.class_level || l.level || ''));
+                                    const firstName = this.escapeHtml((l.full_name || '').split(' ')[0]);
+                                    const isFemale = l.gender === 'female';
+                                    const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(l.full_name || 'Learner')}&background=${isFemale ? 'ec4899' : '2563eb'}&color=fff&rounded=true&bold=true&size=64`;
+                                    const photoUrl = l.avatar_url || fallbackAvatar;
+                                    return `
+                                        <button type="button" 
+                                                id="pill-child-${l.learner_id}"
+                                                data-learner-id="${l.learner_id}"
+                                                class="quick-child-pill ${isSelected ? 'active-child' : ''}" 
+                                                onclick="App.handleParentChildSelect(${l.learner_id})"
+                                                title="Scope materials for ${this.escapeHtml(l.full_name)} (P1 to ${classTag})">
+                                            <img src="${this.escapeHtml(photoUrl)}" 
+                                                 alt="${this.escapeHtml(l.full_name)}" 
+                                                 class="child-pill-avatar"
+                                                 onerror="this.src='${fallbackAvatar}';">
+                                            <span>${firstName}</span>
+                                            <span class="child-pill-badge">${classTag}</span>
+                                        </button>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <!-- Filter Controls Toolbar -->
+                <div class="card" style="padding:1rem 1.25rem; margin-bottom:1.5rem;">
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; align-items:flex-end;">
+                        <div>
+                            <label style="font-size:0.8rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Class Level</label>
+                            <select id="mat-filter-class" class="form-control" onchange="App.handleMaterialClassFilter(this.value)">
+                                <option value="">All Classes (P1–P7)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:0.8rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Subject</label>
+                            <select id="mat-filter-subject" class="form-control" onchange="App.handleMaterialSubjectFilter(this.value)">
+                                <option value="">All Subjects</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:0.8rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Content Format</label>
+                            <select id="mat-filter-type" class="form-control" onchange="App.handleMaterialTypeFilter(this.value)">
+                                <option value="">All Formats</option>
+                                <option value="text">📄 Text & Documents (PDF, DOCX, EPUB)</option>
+                                <option value="video">🎬 Video (MP4, WebM)</option>
+                                <option value="audio">🎧 Audio (MP3, WAV)</option>
+                                <option value="image">🖼️ Visual & Infographics (PNG, JPG, SVG)</option>
+                                <option value="interactive">🧩 Interactive (HTML5, ZIP)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:0.8rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Search Keywords</label>
+                            <input type="text" id="mat-filter-search" class="form-control" placeholder="Search title, description..." oninput="App.handleMaterialSearch(this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Header -->
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <div id="materials-count-summary" style="font-size:0.9rem; font-weight:600; color:var(--text-muted);">
+                        Loading resources...
+                    </div>
+                </div>
+
+                <!-- Materials Cards Grid Container -->
+                <div id="materials-grid-container" class="materials-grid">
+                    <div style="text-align:center; padding:3rem 1rem; color:var(--text-muted); grid-column:1/-1;">
+                        <div style="font-size:2rem; margin-bottom:8px;">⏳</div>
+                        <p>Loading digital learning materials...</p>
+                    </div>
+                </div>
+
+                <!-- Modals Container -->
+                <div id="materials-modals-mount"></div>
+            </div>
+        `;
+
+        await this.loadMaterialsFilterOptions();
+        await this.loadMaterials();
+    },
+
+    async loadMaterialsFilterOptions() {
+        try {
+            const [classRes, subjRes] = await Promise.allSettled([
+                API.get('/api/curriculum/classes'),
+                API.get('/api/curriculum/subjects')
+            ]);
+            
+            if (classRes.status === 'fulfilled') {
+                const rawClasses = Array.isArray(classRes.value.data) ? classRes.value.data : (classRes.value.data?.classes || []);
+                this.materialsState.classes = rawClasses;
+            }
+
+            if (subjRes.status === 'fulfilled') {
+                const rawSubjects = Array.isArray(subjRes.value.data) ? subjRes.value.data : (subjRes.value.data?.subjects || []);
+                this.materialsState.allSubjects = rawSubjects;
+                this.materialsState.subjects = rawSubjects;
+            }
+
+            this.updateMaterialClassAndSubjectDropdowns();
+        } catch (err) {
+            console.error('Failed to load filter options for materials:', err);
+        }
+    },
+
+    updateMaterialClassAndSubjectDropdowns() {
+        const classSelect = document.getElementById('mat-filter-class');
+        const subjectSelect = document.getElementById('mat-filter-subject');
+        const allClasses = this.materialsState.classes || [];
+        const maxLvl = this.materialsState.maxClassLevel;
+
+        let availableClasses = allClasses;
+        if (maxLvl !== null && maxLvl !== undefined && maxLvl > 0) {
+            availableClasses = allClasses.filter(c => parseInt(c.level || 0, 10) <= maxLvl);
+        }
+
+        if (classSelect) {
+            let defaultLabel = 'All Classes (P1–P7)';
+            if (this.materialsState.selectedLearner && maxLvl) {
+                defaultLabel = `All Foundational Classes (P1 to P${maxLvl})`;
+            }
+            classSelect.innerHTML = `<option value="">${defaultLabel}</option>` +
+                availableClasses.map(c => `
+                    <option value="${c.class_id}" ${String(this.materialsState.filterClassId) === String(c.class_id) ? 'selected' : ''}>
+                        ${this.escapeHtml(c.class_name)} (${c.class_code})
+                    </option>
+                `).join('');
+        }
+
+        if (subjectSelect) {
+            let availableSubjects = this.materialsState.allSubjects || [];
+            if (this.materialsState.filterClassId) {
+                availableSubjects = availableSubjects.filter(s => String(s.class_id) === String(this.materialsState.filterClassId));
+            } else if (maxLvl !== null && maxLvl !== undefined && maxLvl > 0) {
+                const allowedClassIds = new Set(availableClasses.map(c => String(c.class_id)));
+                availableSubjects = availableSubjects.filter(s => allowedClassIds.has(String(s.class_id)));
+            }
+
+            let defaultSubjLabel = 'All Subjects';
+            if (this.materialsState.selectedLearner && maxLvl && !this.materialsState.filterClassId) {
+                defaultSubjLabel = `All Subjects (P1–P${maxLvl})`;
+            }
+
+            subjectSelect.innerHTML = `<option value="">${defaultSubjLabel}</option>` +
+                availableSubjects.map(s => `
+                    <option value="${s.subject_id}" ${String(this.materialsState.filterSubjectId) === String(s.subject_id) ? 'selected' : ''}>
+                        ${this.escapeHtml(s.class_code ? s.class_code + ' • ' : '')}${this.escapeHtml(s.subject_name)} (${s.subject_code || ''})
+                    </option>
+                `).join('');
+        }
+    },
+
+    async handleParentChildSelect(learnerId) {
+        this.materialsState.selectedLearnerId = learnerId ? String(learnerId) : '';
+        this.materialsState.filterClassId = '';
+        this.materialsState.filterSubjectId = '';
+        this.materialsState.filterLessonId = '';
+
+        // Dynamically toggle active styling on quick-child-pills
+        const allPill = document.getElementById('pill-child-all');
+        if (allPill) {
+            if (!this.materialsState.selectedLearnerId) {
+                allPill.classList.add('active-all');
+            } else {
+                allPill.classList.remove('active-all');
+            }
+        }
+
+        document.querySelectorAll('.quick-child-pill[id^="pill-child-"]').forEach(pill => {
+            if (pill.id === 'pill-child-all') return;
+            const pid = pill.getAttribute('data-learner-id');
+            if (pid && String(pid) === String(this.materialsState.selectedLearnerId)) {
+                pill.classList.add('active-child');
+            } else {
+                pill.classList.remove('active-child');
+            }
+        });
+
+        if (learnerId) {
+            const child = (this.materialsState.parentLearners || []).find(l => String(l.learner_id) === String(learnerId));
+            this.materialsState.selectedLearner = child || null;
+            this.materialsState.maxClassLevel = child ? parseInt(child.class_level || child.level || 7, 10) : null;
+        } else {
+            this.materialsState.selectedLearner = null;
+            this.materialsState.maxClassLevel = null;
+        }
+
+        this.updateMaterialClassAndSubjectDropdowns();
+        await this.loadMaterials();
+    },
+
+    viewChildMaterials(learnerId) {
+        this.materialsState.selectedLearnerId = String(learnerId);
+        window.location.hash = '#learner-materials';
+    },
+
+    async handleMaterialClassFilter(classId) {
+        this.materialsState.filterClassId = classId;
+        this.materialsState.filterSubjectId = '';
+        this.materialsState.filterLessonId = '';
+
+        const subjectSelect = document.getElementById('mat-filter-subject');
+        if (subjectSelect) {
+            if (!classId) {
+                this.updateMaterialClassAndSubjectDropdowns();
+            } else {
+                subjectSelect.innerHTML = '<option value="">Loading subjects...</option>';
+                try {
+                    const res = await API.get(`/api/curriculum/classes/${classId}/subjects`);
+                    const rawSubjects = res.data?.subjects || (Array.isArray(res.data) ? res.data : []);
+                    this.materialsState.subjects = rawSubjects;
+                    subjectSelect.innerHTML = '<option value="">All Subjects in Class</option>' +
+                        rawSubjects.map(s => `
+                            <option value="${s.subject_id}">${this.escapeHtml(s.subject_name)} (${s.subject_code || ''})</option>
+                        `).join('');
+                } catch (err) {
+                    subjectSelect.innerHTML = '<option value="">All Subjects</option>';
+                }
+            }
+        }
+
+        await this.loadMaterials();
+    },
+
+    async handleMaterialSubjectFilter(subjectId) {
+        this.materialsState.filterSubjectId = subjectId;
+        await this.loadMaterials();
+    },
+
+    async handleMaterialTypeFilter(type) {
+        this.materialsState.filterType = type;
+        await this.loadMaterials();
+    },
+
+    setMaterialsTab(tab) {
+        this.materialsState.activeTab = tab;
+        document.querySelectorAll('.pipeline-tab[id^="tab-mat-"], .class-tab-btn[id^="tab-mat-"]').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.getElementById(`tab-mat-${tab}`);
+        if (activeBtn) activeBtn.classList.add('active');
+
+        if (tab === 'all') {
+            this.materialsState.filterStatus = '';
+        } else {
+            this.materialsState.filterStatus = tab;
+        }
+
+        this.loadMaterials();
+    },
+
+    handleMaterialSearch(query) {
+        this.materialsState.searchTerm = (query || '').trim();
+        clearTimeout(this._matSearchDebounce);
+        this._matSearchDebounce = setTimeout(() => {
+            this.loadMaterials();
+        }, 300);
+    },
+
+    async loadMaterials() {
+        const grid = document.getElementById('materials-grid-container');
+        const countSummary = document.getElementById('materials-count-summary');
+        if (!grid) return;
+
+        grid.innerHTML = `
+            <div style="text-align:center; padding:3rem 1rem; color:var(--text-muted); grid-column:1/-1;">
+                <div style="font-size:2rem; margin-bottom:8px;">⏳</div>
+                <p>Loading digital learning materials...</p>
+            </div>
+        `;
+
+        try {
+            const params = new URLSearchParams();
+            if (this.materialsState.filterClassId) {
+                params.append('class_id', this.materialsState.filterClassId);
+            }
+            if (this.materialsState.selectedLearnerId) {
+                params.append('learner_id', this.materialsState.selectedLearnerId);
+            } else if (this.materialsState.maxClassLevel) {
+                params.append('max_class_level', this.materialsState.maxClassLevel);
+            }
+            if (this.materialsState.filterSubjectId) params.append('subject_id', this.materialsState.filterSubjectId);
+            if (this.materialsState.filterType) params.append('type', this.materialsState.filterType);
+            if (this.materialsState.filterStatus) params.append('status', this.materialsState.filterStatus);
+            if (this.materialsState.searchTerm) params.append('search', this.materialsState.searchTerm);
+            params.append('limit', '50');
+
+            const res = await API.get(`/api/materials?${params.toString()}`);
+            const rawData = res.data;
+            const materialsList = Array.isArray(rawData) ? rawData : (rawData?.materials || []);
+            this.materialsState.materials = materialsList;
+            this.materialsState.pagination = rawData?.pagination || { total: materialsList.length };
+
+            if (countSummary) {
+                let scopeNote = '';
+                if (this.materialsState.selectedLearner) {
+                    scopeNote = ` (Scoped for ${this.materialsState.selectedLearner.full_name}: P1 to ${this.materialsState.selectedLearner.class_code || 'P' + this.materialsState.selectedLearner.class_level})`;
+                }
+                countSummary.innerText = `Showing ${this.materialsState.materials.length} of ${this.materialsState.pagination.total || this.materialsState.materials.length} digital resources${scopeNote}`;
+            }
+
+            if (this.materialsState.materials.length === 0) {
+                grid.innerHTML = `
+                    <div style="text-align:center; padding:4rem 1rem; color:var(--text-muted); grid-column:1/-1; background:var(--bg-card); border-radius:var(--radius-md); border:1px dashed var(--border-color);">
+                        <div style="font-size:2.5rem; margin-bottom:12px;">📁</div>
+                        <h3 style="font-size:1.1rem; color:var(--text-main); margin-bottom:6px;">No learning materials match your filter</h3>
+                        <p style="font-size:0.88rem;">Adjust child, class, subject, format filter or search keywords to view resources.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const role = Auth.getRole();
+            const isStaff = ['curriculum_officer', 'administrator'].includes(role);
+
+            grid.innerHTML = this.materialsState.materials.map(m => {
+                const formatClass = `format-${m.material_type || 'text'}`;
+                const formatIcon = this.getFormatIcon(m.material_type);
+                const sizeFormatted = this.formatBytes(m.file_size_bytes || (m.file_size_kb ? m.file_size_kb * 1024 : 0));
+                const statusBadge = this.renderMaterialStatusBadge(m.status);
+
+                return `
+                    <div class="material-card ${m.status === 'retired' ? 'retired' : ''}" id="mat-card-${m.material_id}">
+                        <div>
+                            <div class="material-card-header">
+                                <div style="display:flex; gap:10px; align-items:flex-start;">
+                                    <div class="material-format-icon ${formatClass}">
+                                        ${formatIcon}
+                                    </div>
+                                    <div>
+                                        <h4 class="material-title">${this.escapeHtml(m.title)}</h4>
+                                        <div class="material-meta-row">
+                                            <span class="material-hierarchy-badge">
+                                                🏫 ${this.escapeHtml(m.class_name || 'Primary')} • ${this.escapeHtml(m.subject_name || 'General')}
+                                            </span>
+                                            ${m.lesson_title ? `
+                                                <span class="material-hierarchy-badge" title="${this.escapeHtml(m.lesson_title)}">
+                                                    📖 ${this.escapeHtml(m.lesson_title.length > 22 ? m.lesson_title.substring(0,22) + '...' : m.lesson_title)}
+                                                </span>
+                                            ` : ''}
+                                            <span class="material-version-tag">v${m.current_version || 1}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>${statusBadge}</div>
+                            </div>
+
+                            <p class="material-desc">
+                                ${this.escapeHtml(m.description || 'Syllabus-aligned digital learning asset approved for primary homeschool instruction.')}
+                            </p>
+
+                            <div class="material-file-info">
+                                <span>📦 <strong>${sizeFormatted}</strong> (Max 300 MB)</span>
+                                <span>🏷️ ${this.escapeHtml((m.mime_type || 'file').split('/')[1] || m.material_type).toUpperCase()}</span>
+                            </div>
+                        </div>
+
+                        <div class="material-actions-bar">
+                            <button class="btn btn-primary btn-sm" onclick="App.openMediaPreviewModal(${m.material_id})">
+                                👁️ Preview / Play
+                            </button>
+                            <a href="/api/materials/${m.material_id}/download" target="_blank" class="btn btn-secondary btn-sm" title="Download Resource">
+                                📥 Download
+                            </a>
+
+                            ${isStaff ? `
+                                <button class="btn btn-secondary btn-sm" onclick="App.openUploadVersionModal(${m.material_id})" title="Upload new version with SHA-256">
+                                    🆙 New Version
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="App.openEditMaterialModal(${m.material_id})" title="Edit Metadata">
+                                    ✏️ Edit
+                                </button>
+                                ${m.status === 'draft' ? `
+                                    <button class="btn btn-secondary btn-sm" style="color:var(--warning);" onclick="App.handleSubmitMaterial(${m.material_id})">
+                                        🚀 Submit
+                                    </button>
+                                ` : ''}
+                                ${['draft', 'submitted'].includes(m.status) ? `
+                                    <button class="btn btn-secondary btn-sm" style="color:var(--success);" onclick="App.handleApproveMaterial(${m.material_id})">
+                                        ✅ Approve
+                                    </button>
+                                ` : ''}
+                                <button class="btn btn-secondary btn-sm" style="color:${['approved', 'active'].includes(m.status) ? 'var(--danger)' : 'var(--success)'};" onclick="App.handleRetireMaterial(${m.material_id}, '${m.status}')">
+                                    ${['approved', 'active'].includes(m.status) ? '🚫 Deactivate' : '✅ Activate'}
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+        } catch (err) {
+            grid.innerHTML = `<div class="alert alert-danger" style="grid-column:1/-1;">${this.escapeHtml(err.message)}</div>`;
+        }
+    },
+
+    renderMaterialStatusBadge(status) {
+        switch (status) {
+            case 'approved':
+            case 'active':
+                return '<span class="badge badge-success" style="font-size:0.75rem;">Approved</span>';
+            case 'submitted':
+                return '<span class="badge badge-warning" style="font-size:0.75rem;">In Review</span>';
+            case 'draft':
+                return '<span class="badge badge-pending" style="font-size:0.75rem;">Draft</span>';
+            case 'retired':
+                return '<span class="badge badge-inactive" style="font-size:0.75rem;">Retired</span>';
+            default:
+                return `<span class="badge badge-pending" style="font-size:0.75rem;">${this.escapeHtml(status)}</span>`;
+        }
+    },
+
+    getFormatIcon(type) {
+        switch (type) {
+            case 'video': return '🎬';
+            case 'audio': return '🎧';
+            case 'image': return '🖼️';
+            case 'interactive': return '🧩';
+            case 'text':
+            default:
+                return '📄';
+        }
+    },
+
+    formatBytes(bytes) {
+        if (!bytes || bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    },
+
+    // =========================================================================
+    // MODAL: UPLOAD NEW MATERIAL (300 MB MAX)
+    // =========================================================================
+
+    async openUploadMaterialModal(presetSubjectId = null, presetLessonId = null) {
+        if (!this.materialsState.classes || this.materialsState.classes.length === 0) {
+            await this.loadMaterialsFilterOptions();
+        }
+
+        const mount = document.getElementById('materials-modals-mount');
+        if (!mount) return;
+
+        mount.innerHTML = `
+            <div class="modal-backdrop" id="upload-material-modal" style="display:flex;">
+                <div class="modal-card modal-card-xl" style="max-width:960px; width:95%; max-height:92vh;">
+                    <div class="modal-header">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:1.3rem;">📁</span>
+                            <div>
+                                <h3 style="margin:0; font-size:1.15rem;">Add New Digital Learning Resource</h3>
+                                <p style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">Upload syllabus-aligned digital assets with cryptographic SHA-256 verification</p>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span class="badge badge-success" style="font-size:0.75rem;">Max 300 MB</span>
+                            <span class="badge badge-primary" style="font-size:0.75rem;">NCDC Primary</span>
+                            <button class="modal-close-btn" onclick="App.closeUploadMaterialModal()">&times;</button>
+                        </div>
+                    </div>
+                    <form id="upload-material-form" onsubmit="App.handleUploadMaterial(event)">
+                        <div class="modal-body" style="padding:1.5rem;">
+                            <div id="upload-mat-alert"></div>
+
+                            <div style="display:grid; grid-template-columns: 1.15fr 0.85fr; gap:1.5rem; align-items:start;" id="upload-mat-grid">
+                                
+                                <!-- Left Column: Metadata & Syllabus Mapping -->
+                                <div>
+                                    <div class="form-group" style="margin-bottom:1rem;">
+                                        <label class="form-label" style="font-weight:600; display:block; margin-bottom:4px;">Material Title *</label>
+                                        <input type="text" id="upload-mat-title" class="form-control" placeholder="e.g. Primary 4 Fractions Animated Video Guide" required>
+                                    </div>
+
+                                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:1rem;">
+                                        <div class="form-group">
+                                            <label class="form-label" style="font-weight:600; display:block; margin-bottom:4px;">Class Level *</label>
+                                            <select id="upload-mat-class" class="form-control" required onchange="App.handleUploadClassChange(this.value)">
+                                                <option value="">Select Primary Class</option>
+                                                ${this.materialsState.classes.map(c => `
+                                                    <option value="${c.class_id}">${this.escapeHtml(c.class_name)} (${c.class_code})</option>
+                                                `).join('')}
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" style="font-weight:600; display:block; margin-bottom:4px;">Subject *</label>
+                                            <select id="upload-mat-subject" class="form-control" required onchange="App.handleUploadSubjectChange(this.value)">
+                                                <option value="">Select Class First</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:1rem;">
+                                        <div class="form-group">
+                                            <label class="form-label" style="font-weight:600; display:block; margin-bottom:4px;">Lesson Association</label>
+                                            <select id="upload-mat-lesson" class="form-control">
+                                                <option value="">General Subject Resource (No Lesson)</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" style="font-weight:600; display:block; margin-bottom:4px;">Material Format *</label>
+                                            <select id="upload-mat-type" class="form-control" required>
+                                                <option value="text">📄 Text / Document (PDF, DOCX, EPUB)</option>
+                                                <option value="video">🎬 Video (MP4, WebM)</option>
+                                                <option value="audio">🎧 Audio (MP3, WAV)</option>
+                                                <option value="image">🖼️ Visual & Diagrams (PNG, JPG, SVG)</option>
+                                                <option value="interactive">🧩 Interactive Module (HTML5, ZIP)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group" style="margin-bottom:0.5rem;">
+                                        <label class="form-label" style="font-weight:600; display:block; margin-bottom:4px;">Pedagogical Description & Context</label>
+                                        <textarea id="upload-mat-desc" class="form-control" rows="3" placeholder="Explain the competency, learning objective, or lesson guide this resource supports..."></textarea>
+                                    </div>
+                                </div>
+
+                                <!-- Right Column: Digital Asset Upload & Live Dropzone -->
+                                <div>
+                                    <label class="form-label" style="font-weight:600; display:block; margin-bottom:4px;">Digital File Upload (Up to 300 MB) *</label>
+                                    
+                                    <div class="dropzone-container" id="mat-dropzone" style="padding:2.2rem 1.5rem; text-align:center;" onclick="document.getElementById('upload-mat-file').click()">
+                                        <div style="font-size:2.8rem; margin-bottom:8px;">☁️</div>
+                                        <p style="font-weight:700; font-size:0.95rem; margin-bottom:4px; color:var(--text-main);" id="dropzone-label">Click or drag & drop file here</p>
+                                        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">
+                                            High-capacity server limit: <strong>300 MB</strong>
+                                        </p>
+                                        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:4px;">
+                                            <span style="font-size:0.7rem; padding:2px 6px; background:#e2e8f0; border-radius:4px; color:#475569;">PDF</span>
+                                            <span style="font-size:0.7rem; padding:2px 6px; background:#e2e8f0; border-radius:4px; color:#475569;">DOCX</span>
+                                            <span style="font-size:0.7rem; padding:2px 6px; background:#e2e8f0; border-radius:4px; color:#475569;">MP4</span>
+                                            <span style="font-size:0.7rem; padding:2px 6px; background:#e2e8f0; border-radius:4px; color:#475569;">WebM</span>
+                                            <span style="font-size:0.7rem; padding:2px 6px; background:#e2e8f0; border-radius:4px; color:#475569;">MP3</span>
+                                            <span style="font-size:0.7rem; padding:2px 6px; background:#e2e8f0; border-radius:4px; color:#475569;">PNG/JPG</span>
+                                            <span style="font-size:0.7rem; padding:2px 6px; background:#e2e8f0; border-radius:4px; color:#475569;">ZIP</span>
+                                        </div>
+                                    </div>
+                                    <input type="file" id="upload-mat-file" style="display:none;" onchange="App.handleFileSelected(this)">
+
+                                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:var(--radius-sm); padding:10px 12px; margin-top:12px; font-size:0.8rem; color:var(--text-muted);">
+                                        <strong>🛡️ Integrity Check:</strong> An immutable SHA-256 hash will be computed upon receipt and stored in the version history.
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="App.closeUploadMaterialModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary" id="btn-submit-upload-mat" style="padding:0.6rem 1.4rem;">
+                                🚀 Upload & Verify SHA-256
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+
+        if (presetSubjectId) {
+            // Pre-select if provided
+        }
+    },
+
+    closeUploadMaterialModal() {
+        const modal = document.getElementById('upload-material-modal');
+        if (modal) modal.remove();
+    },
+
+    async handleUploadClassChange(classId) {
+        const subjectSelect = document.getElementById('upload-mat-subject');
+        const lessonSelect = document.getElementById('upload-mat-lesson');
+        if (!subjectSelect) return;
+
+        if (!classId) {
+            subjectSelect.innerHTML = '<option value="">Select Class First</option>';
+            if (lessonSelect) lessonSelect.innerHTML = '<option value="">General Subject Resource (No Lesson)</option>';
+            return;
+        }
+
+        subjectSelect.innerHTML = '<option value="">Loading subjects...</option>';
+        try {
+            const res = await API.get(`/api/curriculum/classes/${classId}/subjects`);
+            const rawSubjects = res.data?.subjects || (Array.isArray(res.data) ? res.data : []);
+            this.materialsState.subjects = rawSubjects;
+            if (rawSubjects.length === 0) {
+                subjectSelect.innerHTML = '<option value="">No subjects found in this class</option>';
+            } else {
+                subjectSelect.innerHTML = '<option value="">Select Subject</option>' +
+                    rawSubjects.map(s => `<option value="${s.subject_id}">${this.escapeHtml(s.subject_name)} (${s.subject_code || ''})</option>`).join('');
+            }
+            if (lessonSelect) lessonSelect.innerHTML = '<option value="">General Subject Resource (No Lesson)</option>';
+        } catch (err) {
+            subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+        }
+    },
+
+    async handleUploadSubjectChange(subjectId) {
+        const lessonSelect = document.getElementById('upload-mat-lesson');
+        if (!lessonSelect) return;
+
+        if (!subjectId) {
+            lessonSelect.innerHTML = '<option value="">General Subject Resource (No Lesson)</option>';
+            return;
+        }
+
+        lessonSelect.innerHTML = '<option value="">Loading sequenced lessons...</option>';
+        try {
+            const res = await API.get(`/api/curriculum/subjects/${subjectId}/lessons?status=active`);
+            const rawLessons = res.data?.lessons || (Array.isArray(res.data) ? res.data : []);
+            this.materialsState.lessons = rawLessons;
+            if (rawLessons.length === 0) {
+                lessonSelect.innerHTML = '<option value="">General Subject Resource (No lessons registered)</option>';
+            } else {
+                lessonSelect.innerHTML = '<option value="">General Subject Resource (No Lesson)</option>' +
+                    rawLessons.map(l => `<option value="${l.lesson_id}">#${l.sequence_number}: ${this.escapeHtml(l.lesson_title)}</option>`).join('');
+            }
+        } catch (err) {
+            lessonSelect.innerHTML = '<option value="">General Subject Resource (No Lesson)</option>';
+        }
+    },
+
+    handleFileSelected(input) {
+        const file = input.files?.[0];
+        const label = document.getElementById('dropzone-label');
+        if (file && label) {
+            const size = this.formatBytes(file.size);
+            label.innerHTML = `Selected: <strong>${this.escapeHtml(file.name)}</strong> (${size})`;
+            if (file.size > 300 * 1024 * 1024) {
+                alert('Warning: File exceeds 300 MB limit. Please select a file under 300 MB.');
+            }
+        }
+    },
+
+    async handleUploadMaterial(e) {
+        e.preventDefault();
+        const alertBox = document.getElementById('upload-mat-alert');
+        const submitBtn = document.getElementById('btn-submit-upload-mat');
+        const fileInput = document.getElementById('upload-mat-file');
+
+        const file = fileInput?.files?.[0];
+        if (!file) {
+            if (alertBox) alertBox.innerHTML = '<div class="alert alert-danger">Please select a file to upload.</div>';
+            return;
+        }
+
+        if (file.size > 300 * 1024 * 1024) {
+            if (alertBox) alertBox.innerHTML = '<div class="alert alert-danger">File size exceeds maximum limit of 300 MB.</div>';
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('title', document.getElementById('upload-mat-title').value.trim());
+        formData.append('class_id', document.getElementById('upload-mat-class').value);
+        formData.append('subject_id', document.getElementById('upload-mat-subject').value);
+        const lessonId = document.getElementById('upload-mat-lesson').value;
+        if (lessonId) formData.append('lesson_id', lessonId);
+        formData.append('material_type', document.getElementById('upload-mat-type').value);
+        formData.append('description', document.getElementById('upload-mat-desc').value.trim());
+        formData.append('file', file);
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Uploading & computing SHA-256...';
+        if (alertBox) alertBox.innerHTML = '';
+
+        try {
+            const res = await API.post('/api/officer/materials', formData);
+            this.closeUploadMaterialModal();
+            await this.loadMaterials();
+            alert('Learning material uploaded successfully with SHA-256 integrity verification!');
+        } catch (err) {
+            if (alertBox) alertBox.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = '🚀 Upload & Verify SHA-256';
+        }
+    },
+
+    // =========================================================================
+    // MODAL: UPLOAD NEW VERSION (NON-DESTRUCTIVE SHA-256 VERSIONING)
+    // =========================================================================
+
+    async openUploadVersionModal(materialId) {
+        const mat = this.materialsState.materials.find(m => m.material_id === materialId);
+        if (!mat) return;
+
+        const mount = document.getElementById('materials-modals-mount');
+        if (!mount) return;
+
+        mount.innerHTML = `
+            <div class="modal-backdrop" id="version-material-modal" style="display:flex;">
+                <div class="modal-card" style="max-width:550px; width:95%;">
+                    <div class="modal-header">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <h3 style="margin:0;">🆙 Upload New Version</h3>
+                            <span class="badge badge-primary">Current: v${mat.current_version || 1}</span>
+                        </div>
+                        <button class="modal-close-btn" onclick="App.closeUploadVersionModal()">&times;</button>
+                    </div>
+                    <form id="version-material-form" onsubmit="App.handleUploadVersion(event, ${materialId})">
+                        <div class="modal-body">
+                            <div id="version-mat-alert"></div>
+
+                            <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1rem;">
+                                Uploading a new version will preserve previous revisions for historical integrity and increment the active version to <strong>v${(mat.current_version || 1) + 1}</strong>.
+                            </p>
+
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label class="form-label" style="font-weight:600;">Resource Title</label>
+                                <input type="text" class="form-control" value="${this.escapeHtml(mat.title)}" disabled>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label class="form-label" style="font-weight:600;">Version Changelog / Revision Notes</label>
+                                <textarea id="version-mat-notes" class="form-control" rows="2" placeholder="e.g. Updated diagrams for 2026 syllabus compliance..."></textarea>
+                            </div>
+
+                            <!-- 300MB Dropzone -->
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label class="form-label" style="font-weight:600;">Select New Version File (Up to 300 MB) *</label>
+                                <div class="dropzone-container" id="version-dropzone" onclick="document.getElementById('version-mat-file').click()">
+                                    <div style="font-size:2.2rem; margin-bottom:6px;">☁️</div>
+                                    <p style="font-weight:600; margin-bottom:4px;" id="version-dropzone-label">Click or drag & drop new revision file</p>
+                                    <p style="font-size:0.8rem; color:var(--text-muted);">Max file size: 300 MB</p>
+                                </div>
+                                <input type="file" id="version-mat-file" style="display:none;" onchange="App.handleVersionFileSelected(this)">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="App.closeUploadVersionModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary" id="btn-submit-version-mat">🚀 Publish Version ${(mat.current_version || 1) + 1}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+    },
+
+    closeUploadVersionModal() {
+        const modal = document.getElementById('version-material-modal');
+        if (modal) modal.remove();
+    },
+
+    handleVersionFileSelected(input) {
+        const file = input.files?.[0];
+        const label = document.getElementById('version-dropzone-label');
+        if (file && label) {
+            const size = this.formatBytes(file.size);
+            label.innerHTML = `Selected: <strong>${this.escapeHtml(file.name)}</strong> (${size})`;
+        }
+    },
+
+    async handleUploadVersion(e, materialId) {
+        e.preventDefault();
+        const alertBox = document.getElementById('version-mat-alert');
+        const submitBtn = document.getElementById('btn-submit-version-mat');
+        const fileInput = document.getElementById('version-mat-file');
+
+        const file = fileInput?.files?.[0];
+        if (!file) {
+            if (alertBox) alertBox.innerHTML = '<div class="alert alert-danger">Please select a replacement file.</div>';
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('version_notes', document.getElementById('version-mat-notes').value.trim());
+        formData.append('file', file);
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Uploading new revision...';
+        if (alertBox) alertBox.innerHTML = '';
+
+        try {
+            await API.post(`/api/officer/materials/${materialId}/new-version`, formData);
+            this.closeUploadVersionModal();
+            await this.loadMaterials();
+            alert('New version published successfully with cryptographic SHA-256 verification!');
+        } catch (err) {
+            if (alertBox) alertBox.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = '🚀 Publish Version';
+        }
+    },
+
+    // =========================================================================
+    // MODAL: EDIT MATERIAL METADATA
+    // =========================================================================
+
+    async openEditMaterialModal(materialId) {
+        const mat = this.materialsState.materials.find(m => m.material_id === materialId);
+        if (!mat) return;
+
+        const mount = document.getElementById('materials-modals-mount');
+        if (!mount) return;
+
+        mount.innerHTML = `
+            <div class="modal-backdrop" id="edit-material-modal" style="display:flex;">
+                <div class="modal-card" style="max-width:580px; width:95%;">
+                    <div class="modal-header">
+                        <h3 style="margin:0;">✏️ Edit Material Metadata</h3>
+                        <button class="modal-close-btn" onclick="App.closeEditMaterialModal()">&times;</button>
+                    </div>
+                    <form id="edit-material-form" onsubmit="App.handleUpdateMaterial(event, ${materialId})">
+                        <div class="modal-body">
+                            <div id="edit-mat-alert"></div>
+
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label class="form-label" style="font-weight:600;">Title *</label>
+                                <input type="text" id="edit-mat-title" class="form-control" value="${this.escapeHtml(mat.title)}" required>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label class="form-label" style="font-weight:600;">Material Type *</label>
+                                <select id="edit-mat-type" class="form-control" required>
+                                    <option value="text" ${mat.material_type === 'text' ? 'selected' : ''}>📄 Text / Document</option>
+                                    <option value="video" ${mat.material_type === 'video' ? 'selected' : ''}>🎬 Video</option>
+                                    <option value="audio" ${mat.material_type === 'audio' ? 'selected' : ''}>🎧 Audio</option>
+                                    <option value="image" ${mat.material_type === 'image' ? 'selected' : ''}>🖼️ Image / Infographic</option>
+                                    <option value="interactive" ${mat.material_type === 'interactive' ? 'selected' : ''}>🧩 Interactive</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label class="form-label" style="font-weight:600;">Description</label>
+                                <textarea id="edit-mat-desc" class="form-control" rows="3">${this.escapeHtml(mat.description || '')}</textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="App.closeEditMaterialModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary" id="btn-submit-edit-mat">Update Metadata</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+    },
+
+    closeEditMaterialModal() {
+        const modal = document.getElementById('edit-material-modal');
+        if (modal) modal.remove();
+    },
+
+    async handleUpdateMaterial(e, materialId) {
+        e.preventDefault();
+        const alertBox = document.getElementById('edit-mat-alert');
+        const submitBtn = document.getElementById('btn-submit-edit-mat');
+
+        const payload = {
+            title: document.getElementById('edit-mat-title').value.trim(),
+            material_type: document.getElementById('edit-mat-type').value,
+            description: document.getElementById('edit-mat-desc').value.trim()
+        };
+
+        submitBtn.disabled = true;
+        if (alertBox) alertBox.innerHTML = '';
+
+        try {
+            await API.put(`/api/officer/materials/${materialId}`, payload);
+            this.closeEditMaterialModal();
+            await this.loadMaterials();
+            alert('Material metadata updated successfully.');
+        } catch (err) {
+            if (alertBox) alertBox.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        } finally {
+            submitBtn.disabled = false;
+        }
+    },
+
+    // =========================================================================
+    // WORKFLOW TRANSITIONS: SUBMIT, APPROVE, RETIRE
+    // =========================================================================
+
+    async handleSubmitMaterial(materialId) {
+        if (!confirm('Submit this material for formal curriculum review and approval?')) return;
+        try {
+            await API.post(`/api/officer/materials/${materialId}/submit`, {});
+            await this.loadMaterials();
+            alert('Material submitted for review.');
+        } catch (err) {
+            alert('Failed to submit material: ' + err.message);
+        }
+    },
+
+    async handleApproveMaterial(materialId) {
+        if (!confirm('Approve and publish this material for national homeschool distribution?')) return;
+        try {
+            await API.post(`/api/officer/materials/${materialId}/approve`, {});
+            await this.loadMaterials();
+            alert('Material approved and published.');
+        } catch (err) {
+            alert('Failed to approve material: ' + err.message);
+        }
+    },
+
+    async handleRetireMaterial(materialId, currentStatus) {
+        const isCurrentlyActive = ['approved', 'active'].includes(currentStatus);
+        const nextStatus = isCurrentlyActive ? 'retired' : 'approved';
+        const actionVerb = isCurrentlyActive ? 'deactivate / retire' : 'activate / publish';
+        if (!confirm(`Are you sure you want to ${actionVerb} this learning material?`)) return;
+
+        try {
+            await API.post(`/api/officer/materials/${materialId}/retire`, { status: nextStatus });
+            await this.loadMaterials();
+            alert(`Material ${isCurrentlyActive ? 'deactivated' : 'activated'} successfully.`);
+        } catch (err) {
+            alert('Failed to update material status: ' + err.message);
+        }
+    },
+
+    // =========================================================================
+    // MODAL: MULTIMEDIA LIGHTBOX & REVISION VIEWER
+    // =========================================================================
+
+    async openMediaPreviewModal(materialId) {
+        const mount = document.getElementById('materials-modals-mount');
+        if (!mount) return;
+
+        mount.innerHTML = `
+            <div class="modal-backdrop" id="media-preview-modal" style="display:flex;">
+                <div class="modal-card" style="max-width:850px; width:95%;">
+                    <div class="modal-header">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <h3 style="margin:0;" id="preview-modal-title">Loading Preview...</h3>
+                        </div>
+                        <button class="modal-close-btn" onclick="App.closeMediaPreviewModal()">&times;</button>
+                    </div>
+                    <div class="modal-body" id="preview-modal-body" style="padding:1.5rem;">
+                        <div style="text-align:center; padding:3rem 1rem; color:var(--text-muted);">
+                            <div style="font-size:2rem; margin-bottom:8px;">⏳</div>
+                            <p>Loading digital resource stream...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        try {
+            const res = await API.get(`/api/materials/${materialId}`);
+            const mat = res.data?.material || {};
+            const versions = mat.versions || [];
+            const titleElem = document.getElementById('preview-modal-title');
+            const bodyElem = document.getElementById('preview-modal-body');
+
+            if (titleElem) {
+                titleElem.innerHTML = `${this.escapeHtml(mat.title)} <span class="badge badge-primary" style="font-size:0.75rem;">v${mat.current_version || 1}</span>`;
+            }
+
+            if (!bodyElem) return;
+
+            let playerHtml = '';
+            const downloadUrl = `/api/materials/${materialId}/download`;
+
+            if (mat.material_type === 'video') {
+                playerHtml = `
+                    <div class="media-preview-container">
+                        <video controls autoplay style="width:100%; max-height:55vh;">
+                            <source src="${downloadUrl}" type="${mat.mime_type || 'video/mp4'}">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                `;
+            } else if (mat.material_type === 'audio') {
+                playerHtml = `
+                    <div style="background:#0f172a; padding:2rem; border-radius:var(--radius-md); text-align:center; color:#fff;">
+                        <div style="font-size:3.5rem; margin-bottom:1rem;">🎧</div>
+                        <h4 style="margin-bottom:1rem;">${this.escapeHtml(mat.title)}</h4>
+                        <audio controls style="width:100%; max-width:500px;">
+                            <source src="${downloadUrl}" type="${mat.mime_type || 'audio/mpeg'}">
+                            Your browser does not support audio playback.
+                        </audio>
+                    </div>
+                `;
+            } else if (mat.material_type === 'image') {
+                playerHtml = `
+                    <div class="media-preview-container">
+                        <img src="${downloadUrl}" alt="${this.escapeHtml(mat.title)}" style="max-width:100%; max-height:60vh; object-fit:contain;">
+                    </div>
+                `;
+            } else {
+                playerHtml = `
+                    <div style="text-align:center; padding:2.5rem; background:#f8fafc; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+                        <div style="font-size:3.5rem; margin-bottom:12px;">📄</div>
+                        <h4 style="margin-bottom:8px;">${this.escapeHtml(mat.title)}</h4>
+                        <p style="font-size:0.88rem; color:var(--text-muted); margin-bottom:1.5rem;">
+                            Document Format: <strong>${this.escapeHtml(mat.mime_type || 'application/pdf')}</strong> • Size: <strong>${this.formatBytes(mat.file_size_bytes)}</strong>
+                        </p>
+                        <a href="${downloadUrl}" target="_blank" class="btn btn-primary">
+                            📥 Open / Download Full Document
+                        </a>
+                    </div>
+                `;
+            }
+
+            bodyElem.innerHTML = `
+                ${playerHtml}
+
+                <div style="margin-top:1.5rem; padding-top:1.25rem; border-top:1px solid var(--border-color);">
+                    <h4 style="font-size:0.95rem; margin-bottom:0.75rem;">📜 Cryptographic Version History & Audit Log</h4>
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        ${versions.map(v => `
+                            <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:8px 12px; border-radius:var(--radius-sm); font-size:0.82rem; border:1px solid #f1f5f9;">
+                                <div>
+                                    <strong>v${v.version_number}</strong> • ${this.formatBytes(v.file_size_bytes)} • <span style="color:var(--text-muted);">${this.escapeHtml(v.created_at)}</span>
+                                    <div style="font-family:monospace; font-size:0.72rem; color:#64748b; margin-top:2px;">
+                                        SHA-256: ${this.escapeHtml(v.checksum_sha256 || 'N/A')}
+                                    </div>
+                                    ${v.version_notes ? `<div style="color:var(--text-main); margin-top:2px;"><em>"${this.escapeHtml(v.version_notes)}"</em></div>` : ''}
+                                </div>
+                                <span class="badge ${v.version_number === mat.current_version ? 'badge-success' : 'badge-secondary'}">
+                                    ${v.version_number === mat.current_version ? 'Current' : 'Archive'}
+                                </span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        } catch (err) {
+            const bodyElem = document.getElementById('preview-modal-body');
+            if (bodyElem) bodyElem.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        }
+    },
+
+    closeMediaPreviewModal() {
+        const modal = document.getElementById('media-preview-modal');
+        if (modal) modal.remove();
     },
 
     renderGenericDashboard(container, hash) {

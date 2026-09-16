@@ -376,7 +376,8 @@
             <a href="#mod-01" class="nav-link" onclick="Docs.navigate('mod-01')">✅ 01. Auth & RBAC</a>
             <a href="#mod-02" class="nav-link" onclick="Docs.navigate('mod-02')">✅ 02. Parents & Learners</a>
             <a href="#mod-03" class="nav-link" onclick="Docs.navigate('mod-03')">✅ 03. Curriculum (P1–P7)</a>
-            <a href="#mod-roadmap" class="nav-link" onclick="Docs.navigate('mod-roadmap')">⏳ 04–13. Sprints Roadmap</a>
+            <a href="#mod-04" class="nav-link" onclick="Docs.navigate('mod-04')">✅ 04. Learning Materials</a>
+            <a href="#mod-roadmap" class="nav-link" onclick="Docs.navigate('mod-roadmap')">⏳ 05–13. Sprints Roadmap</a>
             
             <div class="nav-group-title">Operations</div>
             <a href="#credentials" class="nav-link" onclick="Docs.navigate('credentials')">🔑 Demo Credentials</a>
@@ -1023,10 +1024,211 @@
                             <td>Toggle soft-retirement status of a lesson (active / retired)</td>
                             <td><code>curriculum_officer</code>, <code>administrator</code></td>
                         </tr>
+                        <!-- Module 04: Learning Materials & Digital Content Delivery -->
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/materials</code></td>
+                            <td>List learning materials with filters (class, subject, lesson, type, status, search, pagination)</td>
+                            <td>Authenticated (All roles)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/materials/{id}</code></td>
+                            <td>Retrieve material metadata with full version audit trail and SHA-256 hashes</td>
+                            <td>Authenticated (All roles)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/materials/{id}/download</code></td>
+                            <td>Securely stream or download digital asset file (up to 300 MB)</td>
+                            <td>Authenticated (All roles)</td>
+                        </tr>
                         <tr>
                             <td><span class="badge badge-method">POST</span></td>
-                            <td><code>/api/officer/lessons/reorder</code></td>
-                            <td>Batch reorder sequence numbers for all lessons within a subject</td>
+                            <td><code>/api/officer/materials</code></td>
+                            <td>Upload new digital learning asset (up to 300 MB) with server MIME check and SHA-256 checksum</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">PUT</span></td>
+                            <td><code>/api/officer/materials/{id}</code></td>
+                            <td>Update material title, description, type, and lesson mapping</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/materials/{id}/new-version</code></td>
+                            <td>Upload revised file edition (up to 300 MB), computing SHA-256 and incrementing version</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/materials/{id}/submit</code></td>
+                            <td>Submit draft material for formal curriculum review</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/materials/{id}/approve</code></td>
+                            <td>Approve and publish material for national homeschool distribution</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/materials/{id}/retire</code></td>
+                            <td>Toggle active / retired lifecycle status</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SECTION: MODULE 01 -->
+        <section id="sec-mod-01" class="doc-section">
+            <h1 class="doc-title">Module 01: Authentication, User Accounts & RBAC</h1>
+            <p class="doc-subtitle">Identity verification, password governance, and role-based access control</p>
+            <div class="callout"><div class="callout-title">Sprint 1 Status: Completed ✅</div><p>19 automated test assertions passing.</p></div>
+        </section>
+
+        <!-- SECTION: MODULE 02 -->
+        <section id="sec-mod-02" class="doc-section">
+            <h1 class="doc-title">Module 02: Parent, Family & Learner Management</h1>
+            <p class="doc-subtitle">Household onboarding, child enrollment, student photos, and upper primary logins</p>
+            <div class="callout"><div class="callout-title">Sprint 2 Status: Completed ✅</div><p>15 automated test assertions passing.</p></div>
+        </section>
+
+        <!-- SECTION: MODULE 03 -->
+        <section id="sec-mod-03" class="doc-section">
+            <h1 class="doc-title">Module 03: Curriculum Management (P1–P7) & Sequenced Lessons</h1>
+            <p class="doc-subtitle">National Curriculum Development Centre (NCDC) Syllabus Architecture</p>
+
+            <div class="callout">
+                <div class="callout-title">Sprint 3 Status: Completed ✅</div>
+                <p>Curriculum class scaffolding (P1–P7), subject allocations, sequenced lessons, competency framework, and reordering engine are active and validated.</p>
+            </div>
+
+            <h2 class="section-heading">1. Architectural Principles</h2>
+            <p>Module 03 implements Uganda's national primary curriculum standard with the following guarantees:</p>
+            <ul>
+                <li><strong>Strict Hierarchy:</strong> Every curriculum unit is strictly bound: <code>Class (P1–P7) &rarr; Subject &rarr; Sequenced Lesson</code>.</li>
+                <li><strong>Class Consistency Validation:</strong> Subject creation and lesson allocation prevent cross-class contamination.</li>
+                <li><strong>Sequential Numbering:</strong> Lessons within each subject are sequentially ordered (<code>#1, #2, #3...</code>) with gapless reordering.</li>
+                <li><strong>Soft Lifecycle Retirement:</strong> Curriculum revisions preserve historical learner completion records.</li>
+            </ul>
+
+            <h2 class="section-heading">2. Verification & Automated Tests</h2>
+            <pre><code>php tests/test_sprint3_curriculum.php</code></pre>
+        </section>
+
+        <!-- SECTION: MODULE 04 -->
+        <section id="sec-mod-04" class="doc-section">
+            <h1 class="doc-title">Module 04: Learning Materials & Digital Content Delivery</h1>
+            <p class="doc-subtitle">Multi-Format Digital Assets • 300 MB High-Capacity Uploads • Cryptographic SHA-256 Versioning</p>
+
+            <div class="callout">
+                <div class="callout-title">Sprint 4 Status: Completed ✅</div>
+                <p>High-capacity upload engine (expanded to <strong>300 MB</strong>), non-destructive SHA-256 versioning engine, multi-format media streaming (PDF, DOCX, MP4, WebM, MP3, WAV, PNG, SVG, ZIP), curriculum hierarchy delivery boundaries, and full lifecycle approval workflow are active and verified across 15/15 test assertions.</p>
+            </div>
+
+            <h2 class="section-heading">1. Core Architectural Capabilities</h2>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; margin-top:1rem;">
+                <div class="card" style="padding:1.2rem;">
+                    <h3 style="font-size:1.05rem; margin-top:0;">📦 300 MB Upload Engine</h3>
+                    <p style="font-size:0.88rem; color:var(--text-muted); margin-top:4px;">
+                        Configured via <code>.user.ini</code> with <code>upload_max_filesize = 300M</code>, <code>post_max_size = 310M</code>, and <code>memory_limit = 768M</code>. Enforced server-side with strict MIME inspection via <code>finfo</code>.
+                    </p>
+                </div>
+                <div class="card" style="padding:1.2rem;">
+                    <h3 style="font-size:1.05rem; margin-top:0;">🛡️ Cryptographic SHA-256 Versioning</h3>
+                    <p style="font-size:0.88rem; color:var(--text-muted); margin-top:4px;">
+                        Non-destructive versioning engine stores every revision in <code>material_versions</code> with cryptographic SHA-256 checksums, preventing tampering and preserving historical lesson integrity.
+                    </p>
+                </div>
+                <div class="card" style="padding:1.2rem;">
+                    <h3 style="font-size:1.05rem; margin-top:0;">🎬 Multi-Format Media Delivery</h3>
+                    <p style="font-size:0.88rem; color:var(--text-muted); margin-top:4px;">
+                        Native support for <strong>Text/Documents</strong> (PDF, DOCX, EPUB), <strong>Video</strong> (MP4, WebM), <strong>Audio</strong> (MP3, WAV), <strong>Visuals</strong> (PNG, JPG, SVG), and <strong>Interactive</strong> modules (HTML5, ZIP).
+                    </p>
+                </div>
+                <div class="card" style="padding:1.2rem;">
+                    <h3 style="font-size:1.05rem; margin-top:0;">🏫 Delivery Boundary Isolation</h3>
+                    <p style="font-size:0.88rem; color:var(--text-muted); margin-top:4px;">
+                        Strict class-subject-lesson boundary alignment guarantees that homeschooling learners only receive syllabus materials approved for their specific primary grade.
+                    </p>
+                </div>
+            </div>
+
+            <h2 class="section-heading">2. Lifecycle Approval State Machine</h2>
+            <p>Every digital syllabus asset progresses through a formal MoES review pipeline:</p>
+            <div style="background:var(--bg-card); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-color); font-family:monospace; font-size:0.9rem; margin-bottom:1.5rem;">
+                [Draft (📝)] &rarr; [Submitted for Review (⏳)] &rarr; [Approved & Published (✅)] &rarr; [Soft-Retired (🚫)]
+            </div>
+
+            <h2 class="section-heading">3. Module 04 REST API Endpoints</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Endpoint</th>
+                            <th>Description</th>
+                            <th>Access Scope</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/materials</code></td>
+                            <td>List learning materials with filters (class_id, subject_id, lesson_id, type, status, search, page, limit)</td>
+                            <td>Authenticated (All roles)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/materials/{id}</code></td>
+                            <td>Retrieve material metadata, file details, and complete SHA-256 version audit history</td>
+                            <td>Authenticated (All roles)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/materials/{id}/download</code></td>
+                            <td>Stream or download physical asset file with correct Content-Type & Content-Disposition</td>
+                            <td>Authenticated (All roles)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/materials</code></td>
+                            <td>Upload new digital learning asset (up to 300 MB) with server-side finfo MIME check and SHA-256 checksum calculation</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">PUT</span></td>
+                            <td><code>/api/officer/materials/{id}</code></td>
+                            <td>Update material title, description, type, and lesson alignment</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/materials/{id}/new-version</code></td>
+                            <td>Upload revised file edition (up to 300 MB), computing new SHA-256 hash, logging changelog notes, and incrementing version</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/materials/{id}/submit</code></td>
+                            <td>Transition draft material to submitted status for formal curriculum officer review</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/materials/{id}/approve</code></td>
+                            <td>Approve and publish material for national homeschool distribution</td>
+                            <td><code>curriculum_officer</code>, <code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/officer/materials/{id}/retire</code></td>
+                            <td>Soft-retire or reactivate learning material, preserving historical learner progress</td>
                             <td><code>curriculum_officer</code>, <code>administrator</code></td>
                         </tr>
                     </tbody>
@@ -1034,10 +1236,10 @@
             </div>
 
             <h2 class="section-heading">4. Verification & Automated Test Suite</h2>
-            <p>Run the Module 03 automated test runner (15/15 tests passing):</p>
-            <pre><code>php tests/test_sprint3_curriculum.php</code></pre>
-            <p style="margin-top: 0.5rem;">To verify the complete regression test suite across Sprint 0, 1, 2, and 3 (49/49 tests passing):</p>
-            <pre><code>php tests/test_sprint0_sprint1.php && php tests/test_sprint2_learners.php && php tests/test_sprint3_curriculum.php</code></pre>
+            <p>Run the Module 04 automated test runner (15/15 tests passing):</p>
+            <pre><code>php tests/test_sprint4_materials.php</code></pre>
+            <p style="margin-top: 0.5rem;">To verify the complete regression test suite across Sprint 0, 1, 2, 3, and 4 (64/64 tests passing):</p>
+            <pre><code>php tests/test_sprint0_sprint1.php && php tests/test_sprint2_learners.php && php tests/test_sprint3_curriculum.php && php tests/test_sprint4_materials.php</code></pre>
         </section>
 
         <!-- SECTION: ROADMAP -->
@@ -1059,7 +1261,7 @@
                         <tr><td>Sprint 1</td><td>Module 01: Authentication, Users and RBAC</td><td><span class="badge badge-success">Completed</span></td></tr>
                         <tr><td>Sprint 2</td><td>Module 02: Parent, Family and Learner Management</td><td><span class="badge badge-success">Completed</span></td></tr>
                         <tr><td>Sprint 3</td><td>Module 03: Curriculum Management (P1–P7)</td><td><span class="badge badge-success">Completed</span></td></tr>
-                        <tr><td>Sprint 4</td><td>Module 04: Learning Materials & Digital Delivery</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 4</td><td>Module 04: Learning Materials & Digital Delivery (300 MB)</td><td><span class="badge badge-success">Completed</span></td></tr>
                         <tr><td>Sprint 5</td><td>Module 05: Parental Guides & Flexible Scheduling</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
                         <tr><td>Sprint 6</td><td>Module 06: Online & Offline Assessments & Scoring</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
                         <tr><td>Sprint 7</td><td>Module 07: PWA Offline Architecture & Synchronisation</td><td><span class="badge badge-pending">Upcoming</span></td></tr>

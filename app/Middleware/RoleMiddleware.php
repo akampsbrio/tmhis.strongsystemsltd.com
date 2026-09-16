@@ -22,6 +22,14 @@ class RoleMiddleware
         return $user;
     }
 
+    /**
+     * Alias for requireRoles
+     */
+    public static function requireAny(array $allowedRoles): array
+    {
+        return self::requireRoles($allowedRoles);
+    }
+
     public static function requireAdmin(): array
     {
         return self::requireRoles(['administrator']);
