@@ -208,4 +208,23 @@ $db->prepare("UPDATE users SET full_name = 'Sarah Namubiru' WHERE user_id = :uid
 $userWithFullName = $db->query("SELECT full_name FROM users WHERE user_id = {$parentUserId}")->fetchColumn();
 $test->assert("Users table stores and retrieves full_name directly", $userWithFullName === 'Sarah Namubiru');
 
+// 12. Test Admin User Update
+$db->prepare("UPDATE users SET full_name = 'Sarah N. Updated', email = 'sarah.updated@test.tmhis.org' WHERE user_id = :uid")->execute([':uid' => $parentUserId]);
+$db->prepare("UPDATE parents SET full_name = 'Sarah N. Updated', email = 'sarah.updated@test.tmhis.org', district = 'Mukono' WHERE user_id = :uid")->execute([':uid' => $parentUserId]);
+$updatedParent = $db->query("SELECT u.full_name, u.email, p.district FROM users u JOIN parents p ON u.user_id = p.user_id WHERE u.user_id = {$parentUserId}")->fetch(PDO::FETCH_ASSOC);
+$test->assert("Admin updates user details across users and profile tables", $updatedParent['full_name'] === 'Sarah N. Updated' && $updatedParent['district'] === 'Mukono');
+
+// 13. Test Admin Reset User Password
+$adminResetPwd = 'AdminForcedReset2026!';
+$adminResetHash = password_hash($adminResetPwd, PASSWORD_BCRYPT);
+$db->prepare("UPDATE users SET password_hash = :ph, failed_login_attempts = 0, locked_until = NULL WHERE user_id = :uid")->execute([':ph' => $adminResetHash, ':uid' => $parentUserId]);
+$resetFetch = $db->query("SELECT password_hash FROM users WHERE user_id = {$parentUserId}")->fetchColumn();
+$test->assert("Admin resets target user password and clears lockout", password_verify($adminResetPwd, $resetFetch));
+
+// 14. Test Admin Unlock Account
+$db->prepare("UPDATE users SET failed_login_attempts = 5, locked_until = DATE_ADD(NOW(), INTERVAL 15 MINUTE) WHERE user_id = :uid")->execute([':uid' => $parentUserId]);
+$db->prepare("UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE user_id = :uid")->execute([':uid' => $parentUserId]);
+$unlockedRow = $db->query("SELECT failed_login_attempts, locked_until FROM users WHERE user_id = {$parentUserId}")->fetch(PDO::FETCH_ASSOC);
+$test->assert("Admin unlock clears failed login attempts and lockout timestamp", (int)$unlockedRow['failed_login_attempts'] === 0 && $unlockedRow['locked_until'] === null);
+
 $test->summary();

@@ -999,6 +999,85 @@ const App = {
                     </form>
                 </div>
             </div>
+
+            <!-- Edit User Modal -->
+            <div id="edit-user-modal" class="modal-overlay">
+                <div class="modal-box" style="max-width:560px;">
+                    <div class="modal-header">
+                        <h3 id="edit-user-modal-title">Edit User Account</h3>
+                        <button class="close-btn" onclick="App.closeEditUserModal()">&times;</button>
+                    </div>
+                    <div id="edit-user-alert"></div>
+                    <form onsubmit="App.handleSaveEditUser(event)" id="edit-user-form">
+                        <input type="hidden" id="edit-user-id">
+                        <input type="hidden" id="edit-user-role-code">
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="edit-user-fullname">Full Name *</label>
+                                <input type="text" id="edit-user-fullname" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-user-status">Account Status</label>
+                                <select id="edit-user-status" class="form-control">
+                                    <option value="active">Active</option>
+                                    <option value="suspended">Suspended</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="edit-user-email">Email Address *</label>
+                                <input type="email" id="edit-user-email" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-user-username">Username</label>
+                                <input type="text" id="edit-user-username" class="form-control">
+                            </div>
+                        </div>
+
+                        <div id="edit-user-role-fields"></div>
+
+                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:1.5rem;">
+                            <button type="button" class="btn btn-secondary" onclick="App.closeEditUserModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary" id="btn-update-user">Save User Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Reset User Password Modal -->
+            <div id="reset-password-modal" class="modal-overlay">
+                <div class="modal-box">
+                    <div class="modal-header">
+                        <h3>Reset User Password</h3>
+                        <button class="close-btn" onclick="App.closeResetPasswordModal()">&times;</button>
+                    </div>
+                    <div id="admin-reset-pwd-alert"></div>
+                    <form onsubmit="App.handleAdminResetPassword(event)">
+                        <input type="hidden" id="admin-reset-user-id">
+
+                        <p style="font-size:0.92rem; color:var(--text); margin-bottom:1rem;">
+                            Set a new password for <strong id="admin-reset-user-name">—</strong> (<span id="admin-reset-user-email">—</span>).
+                        </p>
+
+                        <div class="form-group">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                <label for="admin-new-password" style="margin:0;">New Password (min 8 chars) *</label>
+                                <button type="button" class="btn btn-secondary btn-sm" style="padding:2px 8px; font-size:0.75rem;" onclick="App.generateRandomPassword()">🎲 Generate Random</button>
+                            </div>
+                            <input type="text" id="admin-new-password" class="form-control" placeholder="Enter new password" required minlength="8">
+                        </div>
+
+                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:1.5rem;">
+                            <button type="button" class="btn btn-secondary" onclick="App.closeResetPasswordModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary" id="btn-submit-reset-pwd">Confirm Password Reset</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         `;
 
         this.loadAdminUsers();
@@ -1029,13 +1108,15 @@ const App = {
                             <th>Role</th>
                             <th>Status</th>
                             <th>Last Login</th>
-                            <th>Actions</th>
+                            <th>Administrative Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${users.map(u => {
                             const uDisplayName = u.full_name || u.username || u.email;
                             const uAvatar = u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(uDisplayName)}&background=2563eb&color=fff&rounded=true`;
+                            const isLocked = u.locked_until && new Date(u.locked_until) > new Date();
+
                             return `
                             <tr>
                                 <td>#${u.user_id}</td>
@@ -1049,17 +1130,33 @@ const App = {
                                     </div>
                                 </td>
                                 <td>${this.formatRoleBadge(u.role_code)}</td>
-                                <td><span class="status-badge status-${u.account_status}">${u.account_status}</span></td>
+                                <td>
+                                    <span class="status-badge status-${u.account_status}">${u.account_status}</span>
+                                    ${isLocked ? `<div style="font-size:0.7rem; color:#dc2626; font-weight:bold; margin-top:2px;">🔒 Locked</div>` : ''}
+                                </td>
                                 <td>${u.last_login_at ? u.last_login_at : 'Never'}</td>
                                 <td>
-                                    ${u.role_code !== 'administrator' || u.user_id !== Auth.getUser()?.user_id ? `
-                                        <select class="form-control" style="width:auto; padding:2px 6px; font-size:0.75rem;" onchange="App.changeUserStatus(${u.user_id}, this.value)">
-                                            <option value="" disabled selected>Change Status</option>
-                                            <option value="active" ${u.account_status === 'active' ? 'disabled' : ''}>Set Active</option>
-                                            <option value="suspended" ${u.account_status === 'suspended' ? 'disabled' : ''}>Suspend</option>
-                                            <option value="inactive" ${u.account_status === 'inactive' ? 'disabled' : ''}>Deactivate</option>
-                                        </select>
-                                    ` : '<span style="font-size:0.75rem; color:var(--text-muted);">Current User</span>'}
+                                    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                                        <button class="btn btn-secondary btn-sm" style="padding:3px 7px; font-size:0.75rem;" onclick="App.openEditUserModal(${u.user_id})" title="Edit user details">
+                                            ✏️ Edit
+                                        </button>
+                                        <button class="btn btn-secondary btn-sm" style="padding:3px 7px; font-size:0.75rem;" onclick="App.openResetPasswordModal(${u.user_id}, '${this.escapeHtml(u.email)}', '${this.escapeHtml(uDisplayName)}')" title="Reset user password">
+                                            🔑 Password
+                                        </button>
+                                        ${isLocked ? `
+                                            <button class="btn btn-warning btn-sm" style="padding:3px 7px; font-size:0.75rem; background:#f59e0b; color:#fff;" onclick="App.unlockUserAccount(${u.user_id})" title="Unlock account">
+                                                🔓 Unlock
+                                            </button>
+                                        ` : ''}
+                                        ${u.role_code !== 'administrator' || u.user_id !== Auth.getUser()?.user_id ? `
+                                            <select class="form-control" style="width:auto; padding:2px 6px; font-size:0.75rem;" onchange="App.changeUserStatus(${u.user_id}, this.value)">
+                                                <option value="" disabled selected>Status</option>
+                                                <option value="active" ${u.account_status === 'active' ? 'disabled' : ''}>Active</option>
+                                                <option value="suspended" ${u.account_status === 'suspended' ? 'disabled' : ''}>Suspend</option>
+                                                <option value="inactive" ${u.account_status === 'inactive' ? 'disabled' : ''}>Deactivate</option>
+                                            </select>
+                                        ` : ''}
+                                    </div>
                                 </td>
                             </tr>
                             `;
@@ -1069,6 +1166,195 @@ const App = {
             `;
         } catch (err) {
             tableBox.innerHTML = `<div class="alert alert-danger" style="margin:1rem;">${this.escapeHtml(err.message)}</div>`;
+        }
+    },
+
+    async openEditUserModal(userId) {
+        const modal = document.getElementById('edit-user-modal');
+        const alertBox = document.getElementById('edit-user-alert');
+        const roleFieldsBox = document.getElementById('edit-user-role-fields');
+        if (!modal) return;
+
+        alertBox.innerHTML = '';
+        modal.classList.add('active');
+
+        try {
+            const res = await API.get(`/api/admin/users/${userId}`);
+            const user = res.data;
+
+            document.getElementById('edit-user-modal-title').innerText = `Edit User #${user.user_id} (${user.role_name || user.role_code})`;
+            document.getElementById('edit-user-id').value = user.user_id;
+            document.getElementById('edit-user-role-code').value = user.role_code;
+            document.getElementById('edit-user-fullname').value = user.full_name || '';
+            document.getElementById('edit-user-email').value = user.email || '';
+            document.getElementById('edit-user-username').value = user.username || '';
+            document.getElementById('edit-user-status').value = user.account_status || 'active';
+
+            // Populate role profile fields
+            let roleHtml = '';
+            if (user.role_code === 'parent') {
+                roleHtml = `
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Phone Number</label>
+                            <input type="tel" id="edit-user-phone" class="form-control" value="${this.escapeHtml(user.profile?.phone || '')}">
+                        </div>
+                        <div class="form-group">
+                            <label>District</label>
+                            <input type="text" id="edit-user-district" class="form-control" value="${this.escapeHtml(user.profile?.district || '')}">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Physical Address</label>
+                        <input type="text" id="edit-user-address" class="form-control" value="${this.escapeHtml(user.profile?.physical_address || '')}">
+                    </div>
+                `;
+            } else if (user.role_code === 'teacher') {
+                roleHtml = `
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Phone Number</label>
+                            <input type="tel" id="edit-user-phone" class="form-control" value="${this.escapeHtml(user.profile?.phone || '')}">
+                        </div>
+                        <div class="form-group">
+                            <label>Subject Specialty</label>
+                            <input type="text" id="edit-user-specialty" class="form-control" value="${this.escapeHtml(user.profile?.subject_specialty || '')}">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Assigned School / Center</label>
+                        <input type="text" id="edit-user-school" class="form-control" value="${this.escapeHtml(user.profile?.school || '')}">
+                    </div>
+                `;
+            } else if (user.role_code === 'curriculum_officer') {
+                roleHtml = `
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Phone Number</label>
+                            <input type="tel" id="edit-user-phone" class="form-control" value="${this.escapeHtml(user.profile?.phone || '')}">
+                        </div>
+                        <div class="form-group">
+                            <label>Department</label>
+                            <input type="text" id="edit-user-dept" class="form-control" value="${this.escapeHtml(user.profile?.department || '')}">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Officer Role / Title</label>
+                        <input type="text" id="edit-user-officer-role" class="form-control" value="${this.escapeHtml(user.profile?.officer_role || '')}">
+                    </div>
+                `;
+            }
+            roleFieldsBox.innerHTML = roleHtml;
+
+        } catch (err) {
+            alertBox.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        }
+    },
+
+    closeEditUserModal() {
+        document.getElementById('edit-user-modal')?.classList.remove('active');
+    },
+
+    async handleSaveEditUser(e) {
+        e.preventDefault();
+        const userId = document.getElementById('edit-user-id').value;
+        const alertBox = document.getElementById('edit-user-alert');
+        const submitBtn = document.getElementById('btn-update-user');
+
+        const payload = {
+            full_name: document.getElementById('edit-user-fullname').value.trim(),
+            email: document.getElementById('edit-user-email').value.trim(),
+            username: document.getElementById('edit-user-username')?.value.trim() || null,
+            account_status: document.getElementById('edit-user-status')?.value || 'active',
+            phone: document.getElementById('edit-user-phone')?.value.trim() || null,
+            district: document.getElementById('edit-user-district')?.value.trim() || null,
+            physical_address: document.getElementById('edit-user-address')?.value.trim() || null,
+            subject_specialty: document.getElementById('edit-user-specialty')?.value.trim() || null,
+            school: document.getElementById('edit-user-school')?.value.trim() || null,
+            department: document.getElementById('edit-user-dept')?.value.trim() || null,
+            officer_role: document.getElementById('edit-user-officer-role')?.value.trim() || null
+        };
+
+        alertBox.innerHTML = '';
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Saving...';
+
+        try {
+            const res = await API.put(`/api/admin/users/${userId}`, payload);
+            this.closeEditUserModal();
+            this.loadAdminUsers();
+            alert(res.message || 'User updated successfully.');
+        } catch (err) {
+            alertBox.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Save User Changes';
+        }
+    },
+
+    openResetPasswordModal(userId, email, fullName) {
+        const modal = document.getElementById('reset-password-modal');
+        const alertBox = document.getElementById('admin-reset-pwd-alert');
+        if (!modal) return;
+
+        alertBox.innerHTML = '';
+        document.getElementById('admin-reset-user-id').value = userId;
+        document.getElementById('admin-reset-user-name').innerText = fullName;
+        document.getElementById('admin-reset-user-email').innerText = email;
+        document.getElementById('admin-new-password').value = '';
+
+        modal.classList.add('active');
+    },
+
+    closeResetPasswordModal() {
+        document.getElementById('reset-password-modal')?.classList.remove('active');
+    },
+
+    generateRandomPassword() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&*';
+        let pwd = '';
+        for (let i = 0; i < 12; i++) {
+            pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        const input = document.getElementById('admin-new-password');
+        if (input) input.value = pwd;
+    },
+
+    async handleAdminResetPassword(e) {
+        e.preventDefault();
+        const userId = document.getElementById('admin-reset-user-id').value;
+        const newPassword = document.getElementById('admin-new-password').value;
+        const alertBox = document.getElementById('admin-reset-pwd-alert');
+        const submitBtn = document.getElementById('btn-submit-reset-pwd');
+
+        alertBox.innerHTML = '';
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Resetting...';
+
+        try {
+            const res = await API.post(`/api/admin/users/${userId}/reset-password`, {
+                new_password: newPassword
+            });
+            this.closeResetPasswordModal();
+            this.loadAdminUsers();
+            alert(res.message || 'Password reset successfully.');
+        } catch (err) {
+            alertBox.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Confirm Password Reset';
+        }
+    },
+
+    async unlockUserAccount(userId) {
+        if (!confirm(`Are you sure you want to unlock account #${userId}?`)) return;
+
+        try {
+            const res = await API.post(`/api/admin/users/${userId}/unlock`, {});
+            this.loadAdminUsers();
+            alert(res.message || 'User account unlocked successfully.');
+        } catch (err) {
+            alert('Unlock failed: ' + err.message);
         }
     },
 

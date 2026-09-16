@@ -684,9 +684,33 @@
                             <td><code>administrator</code></td>
                         </tr>
                         <tr>
+                            <td><span class="badge badge-method">GET</span></td>
+                            <td><code>/api/admin/users/{id}</code></td>
+                            <td>Retrieve detailed user account and actor profile attributes</td>
+                            <td><code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">PUT</span></td>
+                            <td><code>/api/admin/users/{id}</code></td>
+                            <td>Edit user information, status, and role profile details</td>
+                            <td><code>administrator</code></td>
+                        </tr>
+                        <tr>
                             <td><span class="badge badge-method">PATCH</span></td>
                             <td><code>/api/admin/users/{id}/status</code></td>
                             <td>Set user status (active, suspended, inactive)</td>
+                            <td><code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/admin/users/{id}/reset-password</code></td>
+                            <td>Immediately override and reset user password with audit log</td>
+                            <td><code>administrator</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/admin/users/{id}/unlock</code></td>
+                            <td>Unlock account locked from consecutive failed login attempts</td>
                             <td><code>administrator</code></td>
                         </tr>
                     </tbody>
@@ -703,6 +727,7 @@
             <ul>
                 <li><strong>Multi-role Login & Routing:</strong> Authenticates all 5 roles (Administrator, Curriculum Officer, Teacher, Parent, Learner) and routes to their dedicated dashboards.</li>
                 <li><strong>Unified Full Name & Profile Management:</strong> Direct <code>full_name</code> column in <code>users</code> table synchronized with actor profile tables (parents, teachers, officers, learners) and editable live from the Profile view.</li>
+                <li><strong>Administrative User Editing & Overrides:</strong> Full administrative privileges to inspect user profiles, edit full names, emails, contact details, reset passwords immediately, and unlock locked accounts.</li>
                 <li><strong>Avatar & Photo Uploads:</strong> Multi-part file upload (JPG, PNG, WEBP, GIF $\le 4$MB) with server-side MIME verification and fallback to dynamic UI avatars.</li>
                 <li><strong>Role Badge Styling:</strong> Color-coded visual tags for distinct role recognition across user pills, dropdown headers, and tables.</li>
                 <li><strong>Parent Self-Registration:</strong> Transaction-safe creation of user credentials and linked parent profile.</li>
@@ -715,11 +740,11 @@
                     </ul>
                 </li>
                 <li><strong>Client SPA Route Guards:</strong> Automatically redirects authenticated users to their dashboards and shields private screens.</li>
-                <li><strong>Audit Trail Logging:</strong> Logs every login, logout, password change, profile update, and status alteration.</li>
+                <li><strong>Audit Trail Logging:</strong> Logs every login, logout, password change, profile update, admin user edit, admin password reset, and status alteration.</li>
             </ul>
 
             <h2 class="section-heading">Verification & Test Suite</h2>
-            <p>Run the automated test runner to verify all 16 foundation and authentication test assertions:</p>
+            <p>Run the automated test runner to verify all 19 foundation, authentication, and administrative test assertions:</p>
             <pre><code>php tests/test_sprint0_sprint1.php</code></pre>
         </section>
 

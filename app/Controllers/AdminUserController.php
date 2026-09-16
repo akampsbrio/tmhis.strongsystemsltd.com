@@ -281,4 +281,329 @@ class AdminUserController
             'new_status' => $newStatus
         ], "User account status updated to {$newStatus}.");
     }
+
+    /**
+     * GET /api/admin/users/{id}
+     * Admin fetches single user details and role profile
+     */
+    public function show(int|string $userId): void
+    {
+        $userId = (int)$userId;
+        RoleMiddleware::requireAdmin();
+        $db = Database::getConnection();
+
+        $stmt = $db->prepare('
+            SELECT 
+                u.user_id,
+                u.role_id,
+                u.full_name,
+                r.role_code,
+                r.role_name,
+                u.username,
+                u.email,
+                u.avatar_url,
+                u.account_status,
+                u.failed_login_attempts,
+                u.locked_until,
+                u.last_login_at,
+                u.created_at,
+                u.updated_at
+            FROM users u
+            JOIN roles r ON u.role_id = r.role_id
+            WHERE u.user_id = :id
+            LIMIT 1
+        ');
+        $stmt->execute([':id' => $userId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$user) {
+            Response::notFound('User not found.');
+        }
+
+        $user['profile'] = AuthMiddleware::fetchUserProfile($userId, $user['role_code']);
+
+        Response::success($user);
+    }
+
+    /**
+     * PUT /api/admin/users/{id}
+     * Admin updates user info & role profile fields
+     */
+    public function update(int|string $userId): void
+    {
+        $userId = (int)$userId;
+        $admin = RoleMiddleware::requireAdmin();
+
+        $body = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $validator = Validator::make($body)
+            ->required('full_name', 'Full Name')
+            ->required('email', 'Email Address')
+            ->email('email');
+
+        if ($validator->fails()) {
+            Response::validationError($validator->getErrors());
+        }
+
+        $fullName = trim((string)$body['full_name']);
+        $email = strtolower(trim((string)$body['email']));
+        $username = !empty($body['username']) ? trim((string)$body['username']) : null;
+        $status = !empty($body['account_status']) ? trim((string)$body['account_status']) : null;
+
+        $db = Database::getConnection();
+
+        // 1. Check if user exists
+        $fetchStmt = $db->prepare('
+            SELECT u.*, r.role_code 
+            FROM users u 
+            JOIN roles r ON u.role_id = r.role_id 
+            WHERE u.user_id = :id
+        ');
+        $fetchStmt->execute([':id' => $userId]);
+        $targetUser = $fetchStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$targetUser) {
+            Response::notFound('User not found.');
+        }
+
+        // 2. Check email uniqueness if email changed
+        if ($email !== strtolower($targetUser['email'])) {
+            $checkEmail = $db->prepare('SELECT user_id FROM users WHERE email = :email AND user_id != :id LIMIT 1');
+            $checkEmail->execute([':email' => $email, ':id' => $userId]);
+            if ($checkEmail->fetch()) {
+                Response::error('Email is already in use by another account.', 409, ['email' => ['Email is already in use']]);
+            }
+        }
+
+        // 3. Prevent self-deactivation of admin
+        if ((int)$admin['user_id'] === $userId && $status && $status !== 'active') {
+            Response::error('You cannot deactivate or suspend your own administrator account.', 400);
+        }
+
+        try {
+            Database::beginTransaction();
+
+            $newStatus = $status ?: $targetUser['account_status'];
+            $newUsername = $username ?: $targetUser['username'];
+
+            // Update users table
+            $updateUser = $db->prepare('
+                UPDATE users 
+                SET full_name = :fname,
+                    email = :email,
+                    username = :uname,
+                    account_status = :status,
+                    updated_at = NOW()
+                WHERE user_id = :id
+            ');
+            $updateUser->execute([
+                ':fname' => $fullName,
+                ':email' => $email,
+                ':uname' => $newUsername,
+                ':status' => $newStatus,
+                ':id' => $userId
+            ]);
+
+            // Sync with actor profile table
+            switch ($targetUser['role_code']) {
+                case 'parent':
+                    $phone = !empty($body['phone']) ? trim((string)$body['phone']) : null;
+                    $nid = !empty($body['national_id']) ? trim((string)$body['national_id']) : null;
+                    $district = !empty($body['district']) ? trim((string)$body['district']) : null;
+                    $address = !empty($body['physical_address']) ? trim((string)$body['physical_address']) : null;
+
+                    $pStmt = $db->prepare('
+                        UPDATE parents 
+                        SET full_name = :fname,
+                            email = :email,
+                            phone = COALESCE(:phone, phone),
+                            national_id = COALESCE(:nid, national_id),
+                            district = COALESCE(:district, district),
+                            physical_address = COALESCE(:address, physical_address),
+                            status = :status
+                        WHERE user_id = :id
+                    ');
+                    $pStmt->execute([
+                        ':fname' => $fullName,
+                        ':email' => $email,
+                        ':phone' => $phone,
+                        ':nid' => $nid,
+                        ':district' => $district,
+                        ':address' => $address,
+                        ':status' => $newStatus,
+                        ':id' => $userId
+                    ]);
+                    break;
+
+                case 'teacher':
+                    $phone = !empty($body['phone']) ? trim((string)$body['phone']) : null;
+                    $specialty = !empty($body['subject_specialty']) ? trim((string)$body['subject_specialty']) : null;
+                    $school = !empty($body['school']) ? trim((string)$body['school']) : null;
+
+                    $tStmt = $db->prepare('
+                        UPDATE teachers 
+                        SET full_name = :fname,
+                            email = :email,
+                            phone = COALESCE(:phone, phone),
+                            subject_specialty = COALESCE(:spec, subject_specialty),
+                            school = COALESCE(:school, school),
+                            status = :status
+                        WHERE user_id = :id
+                    ');
+                    $tStmt->execute([
+                        ':fname' => $fullName,
+                        ':email' => $email,
+                        ':phone' => $phone,
+                        ':spec' => $specialty,
+                        ':school' => $school,
+                        ':status' => $newStatus,
+                        ':id' => $userId
+                    ]);
+                    break;
+
+                case 'curriculum_officer':
+                    $phone = !empty($body['phone']) ? trim((string)$body['phone']) : null;
+                    $dept = !empty($body['department']) ? trim((string)$body['department']) : null;
+                    $role = !empty($body['officer_role']) ? trim((string)$body['officer_role']) : null;
+                    $institution = !empty($body['institution']) ? trim((string)$body['institution']) : null;
+
+                    $cStmt = $db->prepare('
+                        UPDATE curriculum_officers 
+                        SET full_name = :fname,
+                            email = :email,
+                            phone = COALESCE(:phone, phone),
+                            department = COALESCE(:dept, department),
+                            officer_role = COALESCE(:role, officer_role),
+                            institution = COALESCE(:inst, institution),
+                            status = :status
+                        WHERE user_id = :id
+                    ');
+                    $cStmt->execute([
+                        ':fname' => $fullName,
+                        ':email' => $email,
+                        ':phone' => $phone,
+                        ':dept' => $dept,
+                        ':role' => $role,
+                        ':inst' => $institution,
+                        ':status' => $newStatus,
+                        ':id' => $userId
+                    ]);
+                    break;
+
+                case 'learner':
+                    $lStmt = $db->prepare('UPDATE learners SET full_name = :fname, status = :status WHERE user_id = :id');
+                    $lStmt->execute([':fname' => $fullName, ':status' => $newStatus, ':id' => $userId]);
+                    break;
+            }
+
+            Database::commit();
+
+            AuditService::log(
+                (int)$admin['user_id'],
+                'ADMIN_EDIT_USER',
+                "Admin updated details for user #{$userId} ({$email})",
+                'users',
+                $userId,
+                ['full_name' => $targetUser['full_name'], 'email' => $targetUser['email'], 'status' => $targetUser['account_status']],
+                ['full_name' => $fullName, 'email' => $email, 'status' => $newStatus]
+            );
+
+            Response::success([
+                'user_id' => $userId,
+                'full_name' => $fullName,
+                'email' => $email,
+                'account_status' => $newStatus
+            ], 'User account updated successfully.');
+
+        } catch (Throwable $e) {
+            Database::rollBack();
+            Response::error('Failed to update user: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * POST /api/admin/users/{id}/reset-password
+     * Admin immediately resets a user password
+     */
+    public function resetPassword(int|string $userId): void
+    {
+        $userId = (int)$userId;
+        $admin = RoleMiddleware::requireAdmin();
+
+        $body = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $validator = Validator::make($body)
+            ->required('new_password', 'New Password')
+            ->minLength('new_password', 8, 'New Password');
+
+        if ($validator->fails()) {
+            Response::validationError($validator->getErrors());
+        }
+
+        $newPassword = (string)$body['new_password'];
+        $db = Database::getConnection();
+
+        $stmt = $db->prepare('SELECT user_id, email, username FROM users WHERE user_id = :id');
+        $stmt->execute([':id' => $userId]);
+        $targetUser = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$targetUser) {
+            Response::notFound('User not found.');
+        }
+
+        $pwdHash = password_hash($newPassword, PASSWORD_BCRYPT);
+        $updateStmt = $db->prepare('
+            UPDATE users 
+            SET password_hash = :ph,
+                remember_token_hash = NULL,
+                failed_login_attempts = 0,
+                locked_until = NULL,
+                updated_at = NOW()
+            WHERE user_id = :id
+        ');
+        $updateStmt->execute([':ph' => $pwdHash, ':id' => $userId]);
+
+        AuditService::log(
+            (int)$admin['user_id'],
+            'ADMIN_RESET_PASSWORD',
+            "Admin reset password for user #{$userId} ({$targetUser['email']})",
+            'users',
+            $userId
+        );
+
+        Response::success([
+            'user_id' => $userId,
+            'email' => $targetUser['email']
+        ], "Password for user {$targetUser['email']} has been reset successfully.");
+    }
+
+    /**
+     * POST /api/admin/users/{id}/unlock
+     * Admin unlocks an account locked by failed attempts
+     */
+    public function unlock(int|string $userId): void
+    {
+        $userId = (int)$userId;
+        $admin = RoleMiddleware::requireAdmin();
+        $db = Database::getConnection();
+
+        $stmt = $db->prepare('SELECT user_id, email FROM users WHERE user_id = :id');
+        $stmt->execute([':id' => $userId]);
+        $targetUser = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$targetUser) {
+            Response::notFound('User not found.');
+        }
+
+        $db->prepare('UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE user_id = :id')
+           ->execute([':id' => $userId]);
+
+        AuditService::log(
+            (int)$admin['user_id'],
+            'ADMIN_UNLOCK_USER',
+            "Admin unlocked account for user #{$userId} ({$targetUser['email']})",
+            'users',
+            $userId
+        );
+
+        Response::success(null, "User #{$userId} account has been unlocked.");
+    }
 }

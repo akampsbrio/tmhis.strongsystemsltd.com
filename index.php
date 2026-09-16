@@ -67,7 +67,11 @@ $router->post('/api/auth/update-profile', [AuthController::class, 'updateProfile
 // Administration User Management (Module 01 / 12)
 $router->get('/api/admin/users', [AdminUserController::class, 'index']);
 $router->post('/api/admin/users', [AdminUserController::class, 'create']);
+$router->get('/api/admin/users/{id}', [AdminUserController::class, 'show']);
+$router->put('/api/admin/users/{id}', [AdminUserController::class, 'update']);
 $router->patch('/api/admin/users/{id}/status', [AdminUserController::class, 'updateStatus']);
+$router->post('/api/admin/users/{id}/reset-password', [AdminUserController::class, 'resetPassword']);
+$router->post('/api/admin/users/{id}/unlock', [AdminUserController::class, 'unlock']);
 
 // Dispatch router
 $router->dispatch();
