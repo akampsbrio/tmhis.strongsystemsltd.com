@@ -67,46 +67,68 @@ const App = {
         }
     },
 
-    navigate(hash) {
-        window.location.hash = hash;
+    handleBrandClick(e) {
+        if (e) e.preventDefault();
+        const target = Auth.isAuthenticated() ? this.getDefaultDashboard() : '#login';
+        if (window.location.hash !== target) {
+            window.location.hash = target;
+        } else {
+            this.route();
+        }
     },
 
     route() {
         this.renderHeader();
-        const hash = window.location.hash || (Auth.isAuthenticated() ? this.getDefaultDashboard() : '#login');
+        const hash = window.location.hash;
         const content = document.getElementById('app-content');
 
         if (!content) return;
 
-        // Protected routes check
         const publicRoutes = ['#login', '#register', '#forgot-password', '#reset-password'];
-        if (!Auth.isAuthenticated() && !publicRoutes.some(r => hash.startsWith(r))) {
-            window.location.hash = '#login';
-            return;
+
+        // If authenticated and attempting to view guest/auth forms, automatically redirect to role dashboard
+        if (Auth.isAuthenticated()) {
+            if (!hash || hash === '#' || hash === '#dashboard' || publicRoutes.some(r => hash.startsWith(r))) {
+                const defaultDash = this.getDefaultDashboard();
+                if (window.location.hash !== defaultDash) {
+                    window.location.hash = defaultDash;
+                    return;
+                }
+            }
+        } else {
+            // If NOT authenticated and attempting to view protected route, redirect to login
+            if (!hash || hash === '#' || hash === '#dashboard' || !publicRoutes.some(r => hash.startsWith(r))) {
+                if (window.location.hash !== '#login') {
+                    window.location.hash = '#login';
+                    return;
+                }
+            }
         }
 
-        if (hash === '#login') {
+        const currentHash = window.location.hash || (Auth.isAuthenticated() ? this.getDefaultDashboard() : '#login');
+
+        if (currentHash === '#login') {
             this.renderLogin(content);
-        } else if (hash === '#register') {
+        } else if (currentHash === '#register') {
             this.renderRegister(content);
-        } else if (hash === '#forgot-password') {
+        } else if (currentHash === '#forgot-password') {
             this.renderForgotPassword(content);
-        } else if (hash.startsWith('#reset-password')) {
+        } else if (currentHash.startsWith('#reset-password')) {
             this.renderResetPassword(content);
-        } else if (hash === '#profile') {
+        } else if (currentHash === '#profile') {
             this.renderProfile(content);
-        } else if (hash === '#admin-dashboard') {
+        } else if (currentHash === '#admin-dashboard') {
             this.renderAdminDashboard(content);
-        } else if (hash === '#parent-dashboard') {
+        } else if (currentHash === '#parent-dashboard') {
             this.renderParentDashboard(content);
-        } else if (hash === '#learner-dashboard') {
+        } else if (currentHash === '#learner-dashboard') {
             this.renderLearnerDashboard(content);
-        } else if (hash === '#teacher-dashboard') {
+        } else if (currentHash === '#teacher-dashboard') {
             this.renderTeacherDashboard(content);
-        } else if (hash === '#officer-dashboard') {
+        } else if (currentHash === '#officer-dashboard') {
             this.renderOfficerDashboard(content);
         } else {
-            this.renderGenericDashboard(content, hash);
+            this.renderGenericDashboard(content, currentHash);
         }
     },
 

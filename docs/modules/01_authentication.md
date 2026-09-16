@@ -16,8 +16,9 @@ Securely authenticate all five system roles (**Learner**, **Parent**, **Teacher*
 5. **Brute-Force Rate Limiting:** 5 requests/minute threshold; 5 failed logins triggers a 15-minute account lockout.
 6. **Password Reset:** Single-use, time-expiring (1 hour) tokens.
 7. **Role-Based Access Control:** Strict server-side verification using `RoleMiddleware`.
-8. **Admin User Management:** Admin can create staff accounts and activate/suspend/deactivate users.
-9. **Audit Trail Logging:** All logins, logouts, resets, password changes, and status alterations logged to `audit_trail`.
+8. **Client SPA Route Guards:** Automatically redirects authenticated users away from guest forms (`#login`, `#register`, `#forgot-password`) directly to their role-based dashboard, and protects secure dashboards against unauthenticated direct access.
+9. **Admin User Management:** Admin can create staff accounts and activate/suspend/deactivate users.
+10. **Audit Trail Logging:** All logins, logouts, resets, password changes, and status alterations logged to `audit_trail`.
 
 ---
 
