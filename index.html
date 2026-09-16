@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1e40af">
+    <meta name="description" content="Technology-Mediated Homeschooling Information System for Primary Education (P1–P7) Using the Ugandan Syllabus">
+    <title>TMHIS — Technology-Mediated Homeschooling Information System</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="/css/app.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
+</head>
+<body>
+    <!-- Offline status notification banner -->
+    <div id="offline-banner"></div>
+
+    <!-- Header Navigation Shell -->
+    <header class="app-header">
+        <a href="#login" class="brand">
+            <span class="brand-badge">TMHIS</span>
+            <div class="brand-info">
+                <h1>Homeschooling Information System</h1>
+                <p>Uganda Primary Curriculum (P1–P7)</p>
+            </div>
+        </a>
+        <div class="header-actions" id="header-actions">
+            <!-- Dynamic auth actions populated by App.renderHeader() -->
+        </div>
+    </header>
+
+    <!-- Main Dynamic Content Shell -->
+    <main class="app-main" id="app-content">
+        <div style="text-align:center; padding:3rem 1rem; color:var(--text-muted);">
+            <h2>Loading TMHIS App...</h2>
+        </div>
+    </main>
+
+    <!-- Footer Shell -->
+    <footer class="app-footer">
+        <p>Technology-Mediated Homeschooling Information System (TMHIS) &bull; Primary Education (P1–P7) &bull; MoES / NCDC Syllabus</p>
+    </footer>
+
+    <!-- App JavaScript modules -->
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
