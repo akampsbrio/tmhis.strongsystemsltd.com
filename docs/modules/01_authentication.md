@@ -17,8 +17,9 @@ Securely authenticate all five system roles (**Learner**, **Parent**, **Teacher*
 6. **Password Reset:** Single-use, time-expiring (1 hour) tokens.
 7. **Role-Based Access Control:** Strict server-side verification using `RoleMiddleware`.
 8. **Client SPA Route Guards:** Automatically redirects authenticated users away from guest forms (`#login`, `#register`, `#forgot-password`) directly to their role-based dashboard, and protects secure dashboards against unauthenticated direct access.
-9. **Admin User Management:** Admin can create staff accounts and activate/suspend/deactivate users.
-10. **Audit Trail Logging:** All logins, logouts, resets, password changes, and status alterations logged to `audit_trail`.
+9. **Interactive User Profile Dropdown & Avatar Support:** Top bar navigation renders user avatar images with a dropdown menu displaying user details, role badge, dashboard links, profile & security navigation, documentation links, and sign-out action.
+10. **Admin User Management:** Admin can create staff accounts and activate/suspend/deactivate users with avatars rendered in user tables.
+11. **Audit Trail Logging:** All logins, logouts, resets, password changes, and status alterations logged to `audit_trail`.
 
 ---
 

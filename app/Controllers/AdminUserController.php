@@ -68,6 +68,7 @@ class AdminUserController
                 r.role_name,
                 u.username,
                 u.email,
+                u.avatar_url,
                 u.account_status,
                 u.failed_login_attempts,
                 u.locked_until,

@@ -74,6 +74,7 @@ class AuthMiddleware
                 r.role_name, 
                 u.username, 
                 u.email, 
+                u.avatar_url,
                 u.account_status,
                 u.last_login_at
             FROM users u
@@ -138,6 +139,7 @@ class AuthMiddleware
                 r.role_name, 
                 u.username, 
                 u.email, 
+                u.avatar_url,
                 u.account_status,
                 u.last_login_at
             FROM users u

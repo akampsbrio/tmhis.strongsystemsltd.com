@@ -32,6 +32,12 @@ const App = {
         updateNetworkStatus();
         this.renderHeader();
         window.addEventListener('hashchange', () => this.route());
+        window.addEventListener('click', (e) => {
+            const menuWrapper = document.getElementById('user-menu-wrapper');
+            if (menuWrapper && !menuWrapper.contains(e.target)) {
+                menuWrapper.classList.remove('open');
+            }
+        });
         this.route();
     },
 
@@ -41,29 +47,64 @@ const App = {
 
         const user = Auth.getUser();
         if (user && Auth.isAuthenticated()) {
-            const roleLabels = {
-                'learner': 'Learner (P1–P7)',
-                'parent': 'Parent / Guardian',
-                'teacher': 'Teacher',
-                'curriculum_officer': 'Curriculum Officer',
-                'administrator': 'System Admin'
-            };
-
             const displayName = user.profile?.full_name || user.profile?.first_name || user.username || user.email;
+            const avatarUrl = user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2563eb&color=fff&rounded=true&bold=true`;
 
             headerActions.innerHTML = `
-                <div class="user-badge">
-                    <span>${this.escapeHtml(displayName)}</span>
-                    ${this.formatRoleBadge(user.role_code)}
+                <div class="user-menu-wrapper" id="user-menu-wrapper">
+                    <div class="user-menu-btn" onclick="App.toggleUserDropdown(event)" title="Click for profile & options">
+                        <img src="${this.escapeHtml(avatarUrl)}" alt="Avatar" class="user-avatar-img" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2563eb&color=fff&rounded=true'">
+                        <div class="user-menu-info">
+                            <span class="user-menu-name">${this.escapeHtml(displayName)}</span>
+                            ${this.formatRoleBadge(user.role_code)}
+                        </div>
+                        <span class="user-menu-chevron">▼</span>
+                    </div>
+
+                    <div class="user-dropdown-menu" id="user-dropdown-menu">
+                        <div class="dropdown-header">
+                            <div class="dropdown-user-name">${this.escapeHtml(displayName)}</div>
+                            <div class="dropdown-user-email">${this.escapeHtml(user.email)}</div>
+                            <div class="dropdown-user-role">${this.formatRoleBadge(user.role_code)}</div>
+                        </div>
+                        <div class="dropdown-body">
+                            <button class="dropdown-item" onclick="App.navigate(App.getDefaultDashboard()); App.closeUserDropdown();">
+                                <span>📊</span> My Dashboard
+                            </button>
+                            <button class="dropdown-item" onclick="App.navigate('#profile'); App.closeUserDropdown();">
+                                <span>👤</span> Profile & Password
+                            </button>
+                            <a href="/docs/" target="_blank" class="dropdown-item" onclick="App.closeUserDropdown();">
+                                <span>📖</span> System Documentation
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <button class="dropdown-item text-danger" onclick="Auth.logout()">
+                                <span>🚪</span> Sign Out
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <button class="btn btn-secondary btn-sm" onclick="App.navigate('#profile')">Profile</button>
-                <button class="btn btn-danger btn-sm" onclick="Auth.logout()">Logout</button>
             `;
         } else {
             headerActions.innerHTML = `
                 <a href="#login" class="btn btn-secondary btn-sm">Login</a>
                 <a href="#register" class="btn btn-primary btn-sm">Register Parent</a>
             `;
+        }
+    },
+
+    toggleUserDropdown(e) {
+        if (e) e.stopPropagation();
+        const wrapper = document.getElementById('user-menu-wrapper');
+        if (wrapper) {
+            wrapper.classList.toggle('open');
+        }
+    },
+
+    closeUserDropdown() {
+        const wrapper = document.getElementById('user-menu-wrapper');
+        if (wrapper) {
+            wrapper.classList.remove('open');
         }
     },
 
@@ -434,16 +475,23 @@ const App = {
         const user = Auth.getUser();
         if (!user) return;
 
+        const displayName = user.profile?.full_name || user.profile?.first_name || user.username || user.email;
+        const avatarUrl = user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2563eb&color=fff&rounded=true&bold=true`;
+
         container.innerHTML = `
             <div style="max-width:800px; margin:0 auto;">
-                <div class="card" style="margin-bottom:1.5rem;">
-                    <h2>User Profile</h2>
-                    <p style="margin-top:4px;">Account details and security preferences</p>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:1rem; font-size:0.95rem;">
-                        <div><strong>Email:</strong> ${this.escapeHtml(user.email)}</div>
-                        <div><strong>Role:</strong> ${this.formatRoleBadge(user.role_code)}</div>
-                        <div><strong>Account Status:</strong> <span class="status-badge status-${user.account_status}">${user.account_status}</span></div>
-                        <div><strong>Last Login:</strong> ${user.last_login_at || 'Never'}</div>
+                <div class="card" style="margin-bottom:1.5rem; display:flex; gap:1.5rem; align-items:center;">
+                    <img src="${this.escapeHtml(avatarUrl)}" alt="Profile Photo" style="width:80px; height:80px; border-radius:50%; border:3px solid #e2e8f0; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                    <div style="flex:1;">
+                        <h2>${this.escapeHtml(displayName)}</h2>
+                        <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
+                            ${this.formatRoleBadge(user.role_code)}
+                            <span class="status-badge status-${user.account_status}">${user.account_status}</span>
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:0.8rem; font-size:0.9rem; color:var(--text-muted);">
+                            <div><strong>Email:</strong> ${this.escapeHtml(user.email)}</div>
+                            <div><strong>Last Login:</strong> ${user.last_login_at || 'Never'}</div>
+                        </div>
                     </div>
                 </div>
 
@@ -723,12 +771,19 @@ const App = {
                         </tr>
                     </thead>
                     <tbody>
-                        ${users.map(u => `
+                        ${users.map(u => {
+                            const uAvatar = u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.username || u.email)}&background=2563eb&color=fff&rounded=true`;
+                            return `
                             <tr>
                                 <td>#${u.user_id}</td>
                                 <td>
-                                    <strong>${this.escapeHtml(u.email)}</strong>
-                                    <div style="font-size:0.75rem; color:var(--text-muted);">${this.escapeHtml(u.username || '')}</div>
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <img src="${this.escapeHtml(uAvatar)}" alt="Avatar" style="width:34px; height:34px; border-radius:50%; object-fit:cover; border:1px solid #e2e8f0;">
+                                        <div>
+                                            <strong>${this.escapeHtml(u.email)}</strong>
+                                            <div style="font-size:0.75rem; color:var(--text-muted);">${this.escapeHtml(u.username || '')}</div>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td>${this.formatRoleBadge(u.role_code)}</td>
                                 <td><span class="status-badge status-${u.account_status}">${u.account_status}</span></td>
@@ -744,7 +799,8 @@ const App = {
                                     ` : '<span style="font-size:0.75rem; color:var(--text-muted);">Current User</span>'}
                                 </td>
                             </tr>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     </tbody>
                 </table>
             `;

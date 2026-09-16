@@ -25,6 +25,7 @@ $demoUsers = [
         'role_code' => 'administrator',
         'email' => 'admin@tmhis.org',
         'username' => 'sysadmin',
+        'avatar_url' => 'https://ui-avatars.com/api/?name=Admin+System&background=581c87&color=fff&rounded=true&bold=true',
         'password' => 'Admin@2026!',
         'profile' => [
             'type' => 'admin'
@@ -35,6 +36,7 @@ $demoUsers = [
         'role_code' => 'curriculum_officer',
         'email' => 'officer.ncdc@tmhis.org',
         'username' => 'officer_ncdc',
+        'avatar_url' => 'https://ui-avatars.com/api/?name=Grace+Kiconco&background=064e3b&color=a7f3d0&rounded=true&bold=true',
         'password' => 'Officer@2026!',
         'profile' => [
             'type' => 'officer',
@@ -50,6 +52,7 @@ $demoUsers = [
         'role_code' => 'teacher',
         'email' => 'teacher.mukasa@tmhis.org',
         'username' => 'tr_mukasa',
+        'avatar_url' => 'https://ui-avatars.com/api/?name=David+Mukasa&background=1e3a8a&color=bfdbfe&rounded=true&bold=true',
         'password' => 'Teacher@2026!',
         'profile' => [
             'type' => 'teacher',
@@ -64,6 +67,7 @@ $demoUsers = [
         'role_code' => 'parent',
         'email' => 'parent.namubiru@tmhis.org',
         'username' => 'parent_sarah',
+        'avatar_url' => 'https://ui-avatars.com/api/?name=Sarah+Namubiru&background=7c2d12&color=fed7aa&rounded=true&bold=true',
         'password' => 'Parent@2026!',
         'profile' => [
             'type' => 'parent',
@@ -84,18 +88,19 @@ foreach ($demoUsers as $u) {
     if ($existing) {
         $userId = (int)$existing['user_id'];
         $pwdHash = password_hash($u['password'], PASSWORD_BCRYPT);
-        $db->prepare('UPDATE users SET password_hash = :ph, account_status = "active", locked_until = NULL, failed_login_attempts = 0 WHERE user_id = :id')
-           ->execute([':ph' => $pwdHash, ':id' => $userId]);
+        $db->prepare('UPDATE users SET password_hash = :ph, avatar_url = :avatar, account_status = "active", locked_until = NULL, failed_login_attempts = 0 WHERE user_id = :id')
+           ->execute([':ph' => $pwdHash, ':avatar' => $u['avatar_url'], ':id' => $userId]);
     } else {
         $pwdHash = password_hash($u['password'], PASSWORD_BCRYPT);
         $insert = $db->prepare('
-            INSERT INTO users (role_id, username, email, password_hash, account_status, email_verified_at, created_at)
-            VALUES (:rid, :uname, :email, :ph, "active", NOW(), NOW())
+            INSERT INTO users (role_id, username, email, avatar_url, password_hash, account_status, email_verified_at, created_at)
+            VALUES (:rid, :uname, :email, :avatar, :ph, "active", NOW(), NOW())
         ');
         $insert->execute([
             ':rid' => $u['role_id'],
             ':uname' => $u['username'],
             ':email' => $u['email'],
+            ':avatar' => $u['avatar_url'],
             ':ph' => $pwdHash
         ]);
         $userId = (int)$db->lastInsertId();

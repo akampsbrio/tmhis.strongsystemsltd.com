@@ -45,6 +45,7 @@ class AuthController
                 r.role_name,
                 u.username,
                 u.email,
+                u.avatar_url,
                 u.password_hash,
                 u.account_status,
                 u.failed_login_attempts,
@@ -176,6 +177,7 @@ class AuthController
                 'role_name' => $user['role_name'],
                 'username' => $user['username'],
                 'email' => $user['email'],
+                'avatar_url' => $user['avatar_url'] ?? null,
                 'dashboard_url' => $dashboardUrls[$user['role_code']] ?? '/#dashboard',
                 'profile' => $profile
             ]
