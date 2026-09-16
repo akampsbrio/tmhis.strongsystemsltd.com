@@ -1524,6 +1524,21 @@ const App = {
                     </div>
                     <div id="register-learner-alert"></div>
                     <form onsubmit="App.handleRegisterLearner(event)" id="register-learner-form">
+                        <!-- Student Photo Picker & Preview -->
+                        <div style="display:flex; align-items:center; gap:16px; margin-bottom:1.2rem; background:#f8fafc; padding:12px 16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+                            <div style="position:relative;">
+                                <img id="reg-photo-preview" src="" alt="Child Preview" style="display:none; width:64px; height:64px; border-radius:50%; object-fit:cover; border:3px solid var(--primary); box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+                                <div id="reg-photo-placeholder" class="learner-avatar-box" style="width:64px; height:64px; font-size:1.6rem;">
+                                    👤
+                                </div>
+                            </div>
+                            <div style="flex:1;">
+                                <label style="font-weight:600; font-size:0.9rem; margin-bottom:4px; display:block;">Student Photo (Optional)</label>
+                                <input type="file" id="reg-photo-file" accept="image/*" class="form-control" style="font-size:0.85rem; padding:0.35rem 0.6rem;" onchange="App.handleStudentPhotoPreview(this, 'reg')">
+                                <small style="color:var(--text-muted); font-size:0.75rem;">JPG, PNG, WEBP, GIF (Max 4MB)</small>
+                            </div>
+                        </div>
+
                         <div class="form-row">
                             <div class="form-group" style="flex:2;">
                                 <label for="reg-learner-name">Child Full Name *</label>
@@ -1617,6 +1632,22 @@ const App = {
                     <div id="edit-learner-alert"></div>
                     <form onsubmit="App.handleSaveEditLearner(event)" id="edit-learner-form">
                         <input type="hidden" id="edit-learner-id">
+                        
+                        <!-- Student Photo Update & Preview -->
+                        <div style="display:flex; align-items:center; gap:16px; margin-bottom:1.2rem; background:#f8fafc; padding:12px 16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+                            <div style="position:relative;">
+                                <img id="edit-photo-preview" src="" alt="Child Preview" style="display:none; width:64px; height:64px; border-radius:50%; object-fit:cover; border:3px solid var(--primary); box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+                                <div id="edit-photo-placeholder" class="learner-avatar-box" style="width:64px; height:64px; font-size:1.6rem;">
+                                    👤
+                                </div>
+                            </div>
+                            <div style="flex:1;">
+                                <label style="font-weight:600; font-size:0.9rem; margin-bottom:4px; display:block;">Change Student Photo</label>
+                                <input type="file" id="edit-photo-file" accept="image/*" class="form-control" style="font-size:0.85rem; padding:0.35rem 0.6rem;" onchange="App.handleStudentPhotoPreview(this, 'edit')">
+                                <small style="color:var(--text-muted); font-size:0.75rem;">JPG, PNG, WEBP, GIF (Max 4MB)</small>
+                            </div>
+                        </div>
+
                         <div class="form-row">
                             <div class="form-group" style="flex:2;">
                                 <label for="edit-learner-name">Child Full Name *</label>
@@ -1759,10 +1790,10 @@ const App = {
 
         if (learners.length === 0) {
             gridBox.innerHTML = `
-                <div class="card" style="text-align:center; padding:3.5rem 1.5rem;">
-                    <div style="font-size:3rem; margin-bottom:1rem;">🎒</div>
-                    <h3>No Home Learners Registered Yet</h3>
-                    <p style="color:var(--text-muted); max-width:480px; margin:0.5rem auto 1.5rem;">
+                <div class="card empty-state-card" style="text-align:center; padding:3.5rem 1.5rem; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                    <div style="font-size:3rem; margin-bottom:1rem; text-align:center;">🎒</div>
+                    <h3 style="text-align:center; display:block; width:100%; justify-content:center; margin:0.5rem auto 0.75rem auto;">No Home Learners Registered Yet</h3>
+                    <p style="color:var(--text-muted); max-width:480px; margin:0.5rem auto 1.5rem auto; text-align:center;">
                         Register your children in Primary 1 through Primary 7 to get automated syllabus subjects, parental teaching guides, and assessments.
                     </p>
                     <button class="btn btn-primary" onclick="App.openRegisterLearnerModal()">➕ Register Your First Child</button>
@@ -1775,18 +1806,22 @@ const App = {
             const classCode = l.class_code || 'P1';
             const classClass = `class-${classCode.toLowerCase()}`;
             const isFemale = l.gender === 'female';
-            const avatarClass = isFemale ? 'learner-avatar-female' : '';
-            const initial = (l.full_name || 'L').charAt(0).toUpperCase();
             const ageDisplay = l.age !== null ? `${l.age} years old` : '—';
             const dobFormatted = l.date_of_birth ? new Date(l.date_of_birth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
             const isInactive = l.status === 'inactive';
+            const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(l.full_name || 'Learner')}&background=${isFemale ? 'ec4899' : '2563eb'}&color=fff&rounded=true&bold=true&size=128`;
+            const photoUrl = l.avatar_url || fallbackAvatar;
 
             return `
                 <div class="learner-card" style="${isInactive ? 'opacity:0.75; filter:grayscale(0.3);' : ''}">
                     <div>
                         <div class="learner-card-header">
-                            <div class="learner-avatar-box ${avatarClass}">
-                                ${initial}
+                            <div class="learner-avatar-wrapper" onclick="App.triggerLearnerPhotoUpload(${l.learner_id})" title="Click to upload/change photo for ${this.escapeHtml(l.full_name)}">
+                                <img src="${this.escapeHtml(photoUrl)}" 
+                                     alt="${this.escapeHtml(l.full_name)}" 
+                                     class="learner-avatar-img"
+                                     onerror="this.src='${fallbackAvatar}';">
+                                <div class="learner-photo-badge-btn" title="Change Photo">📷</div>
                             </div>
                             <div style="flex:1; min-width:0;">
                                 <div class="learner-card-title">${this.escapeHtml(l.full_name)}</div>
@@ -1860,6 +1895,84 @@ const App = {
         this.renderLearnersGrid(filtered);
     },
 
+    handleStudentPhotoPreview(input, prefix) {
+        const preview = document.getElementById(`${prefix}-photo-preview`);
+        const placeholder = document.getElementById(`${prefix}-photo-placeholder`);
+
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            if (file.size > 4 * 1024 * 1024) {
+                alert('Photo size exceeds 4MB limit.');
+                input.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                if (preview) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                if (placeholder) {
+                    placeholder.style.display = 'none';
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    },
+
+    async uploadStudentPhotoFile(learnerId, file) {
+        const formData = new FormData();
+        formData.append('avatar_file', file);
+
+        const res = await API.upload(`/api/parent/learners/${learnerId}/avatar`, formData);
+        if (!res || !res.success) {
+            throw new Error(res?.message || 'Failed to upload student photo');
+        }
+
+        return res.data?.avatar_url;
+    },
+
+    showToast(message, type = 'info') {
+        let container = document.getElementById('tmhis-toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'tmhis-toast-container';
+            container.style.cssText = 'position:fixed; bottom:24px; right:24px; z-index:99999; display:flex; flex-direction:column; gap:10px; pointer-events:none;';
+            document.body.appendChild(container);
+        }
+        const toast = document.createElement('div');
+        const bg = type === 'success' ? '#10b981' : (type === 'danger' ? '#ef4444' : '#2563eb');
+        toast.style.cssText = `background:${bg}; color:#ffffff; padding:12px 20px; border-radius:8px; font-weight:600; font-size:0.9rem; box-shadow:0 8px 24px rgba(0,0,0,0.2); pointer-events:auto; transition:all 0.3s ease; opacity:0; transform:translateY(15px); display:flex; align-items:center; gap:8px;`;
+        toast.innerHTML = `<span>${type === 'success' ? '✓' : (type === 'danger' ? '⚠️' : 'ℹ️')}</span> <span>${this.escapeHtml(message)}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '1'; toast.style.transform = 'translateY(0)'; }, 10);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-10px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
+    },
+
+    triggerLearnerPhotoUpload(learnerId) {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/jpeg,image/png,image/webp,image/gif,image/svg+xml';
+        input.onchange = async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            this.showToast('Uploading student photo...', 'info');
+            try {
+                await this.uploadStudentPhotoFile(learnerId, file);
+                await this.loadParentLearners();
+                this.showToast('Student photo updated successfully!', 'success');
+            } catch (err) {
+                alert('Failed to upload photo: ' + err.message);
+            }
+        };
+        input.click();
+    },
+
     async openRegisterLearnerModal() {
         const modal = document.getElementById('register-learner-modal');
         const alertBox = document.getElementById('register-learner-alert');
@@ -1873,6 +1986,17 @@ const App = {
         document.getElementById('reg-age-advisory-box').innerHTML = '';
         document.getElementById('reg-special-needs-container').style.display = 'none';
         document.getElementById('reg-login-container').style.display = 'none';
+
+        // Reset photo preview
+        const photoPreview = document.getElementById('reg-photo-preview');
+        const photoPlaceholder = document.getElementById('reg-photo-placeholder');
+        if (photoPreview) {
+            photoPreview.src = '';
+            photoPreview.style.display = 'none';
+        }
+        if (photoPlaceholder) {
+            photoPlaceholder.style.display = 'flex';
+        }
 
         // Populate class options
         const classes = await this.fetchClasses();
@@ -1972,6 +2096,18 @@ const App = {
 
         try {
             const res = await API.post('/api/parent/learners', payload);
+            const newLearnerId = res.data?.learner?.learner_id;
+
+            // If a photo file was selected, upload it immediately
+            const photoFile = document.getElementById('reg-photo-file')?.files[0];
+            if (photoFile && newLearnerId) {
+                try {
+                    await this.uploadStudentPhotoFile(newLearnerId, photoFile);
+                } catch (photoErr) {
+                    console.warn('Student registered, but photo upload failed:', photoErr);
+                }
+            }
+
             this.closeRegisterLearnerModal();
             await this.loadParentLearners();
             alert(res.message || 'Child registered successfully!');
@@ -2014,6 +2150,25 @@ const App = {
 
             body.innerHTML = `
                 <div>
+                    <!-- Child Photo & Header Card -->
+                    <div style="display:flex; align-items:center; gap:16px; margin-bottom:1.2rem; background:#f8fafc; padding:14px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+                        <div class="learner-avatar-wrapper" style="width:72px; height:72px;" onclick="App.triggerLearnerPhotoUpload(${l.learner_id}); App.closeLearnerDetailModal();" title="Click to upload/change photo">
+                            <img src="${this.escapeHtml(l.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(l.full_name || 'Learner')}&background=${l.gender === 'female' ? 'ec4899' : '2563eb'}&color=fff&rounded=true&bold=true&size=128`)}" 
+                                 alt="${this.escapeHtml(l.full_name)}" 
+                                 style="width:72px; height:72px; border-radius:50%; object-fit:cover; border:3px solid var(--primary); box-shadow:0 3px 10px rgba(0,0,0,0.15);"
+                                 onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(l.full_name || 'Learner')}&background=${l.gender === 'female' ? 'ec4899' : '2563eb'}&color=fff&rounded=true&bold=true&size=128';">
+                            <div class="learner-photo-badge-btn" style="width:24px; height:24px; font-size:12px; bottom:0; right:0;" title="Change Photo">📷</div>
+                        </div>
+                        <div style="flex:1;">
+                            <h3 style="font-size:1.35rem; margin:0 0 4px 0;">${this.escapeHtml(l.full_name)}</h3>
+                            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                                <span class="class-badge class-${(l.class_code||'P1').toLowerCase()}">${this.escapeHtml(l.class_name)} (${l.class_code})</span>
+                                <span class="status-badge status-${l.status || 'active'}">${l.status || 'active'}</span>
+                                ${l.special_learning_needs ? `<span class="needs-badge">♿ Accommodated</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Demographics Card -->
                     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:var(--radius-sm); padding:1rem; margin-bottom:1.5rem; font-size:0.88rem;">
                         <div><strong>Age:</strong> ${l.age} years old</div>
@@ -2055,7 +2210,7 @@ const App = {
                             </span>
                         </div>
                         <div style="display:flex; gap:8px;">
-                            <button class="btn btn-secondary btn-sm" onclick="App.openEditLearnerModal(${l.learner_id}); App.closeLearnerDetailModal();">✏️ Edit Details</button>
+                            <button class="btn btn-secondary btn-sm" onclick="App.openEditLearnerModal(${l.learner_id}); App.closeLearnerDetailModal();">✏️ Edit Details & Photo</button>
                             <button class="btn btn-primary btn-sm" onclick="App.closeLearnerDetailModal()">Done</button>
                         </div>
                     </div>
@@ -2078,6 +2233,7 @@ const App = {
 
         if (!modal) return;
         alertBox.innerHTML = '';
+        document.getElementById('edit-photo-file').value = '';
 
         try {
             const [res, classes] = await Promise.all([
@@ -2090,6 +2246,27 @@ const App = {
             document.getElementById('edit-learner-name').value = l.full_name;
             document.getElementById('edit-learner-gender').value = l.gender;
             document.getElementById('edit-learner-dob').value = l.date_of_birth;
+
+            // Photo preview in Edit Modal
+            const editPreview = document.getElementById('edit-photo-preview');
+            const editPlaceholder = document.getElementById('edit-photo-placeholder');
+            if (l.avatar_url) {
+                if (editPreview) {
+                    editPreview.src = l.avatar_url;
+                    editPreview.style.display = 'block';
+                }
+                if (editPlaceholder) {
+                    editPlaceholder.style.display = 'none';
+                }
+            } else {
+                if (editPreview) {
+                    editPreview.src = '';
+                    editPreview.style.display = 'none';
+                }
+                if (editPlaceholder) {
+                    editPlaceholder.style.display = 'flex';
+                }
+            }
 
             classSelect.innerHTML = classes.map(c => `
                 <option value="${c.class_id}" ${c.class_id == l.class_id ? 'selected' : ''}>
@@ -2133,10 +2310,31 @@ const App = {
         alertBox.innerHTML = '';
 
         try {
+            // 1. If a new photo file was selected, upload it first
+            const photoFile = document.getElementById('edit-photo-file')?.files[0];
+            let newAvatarUrl = null;
+            if (photoFile) {
+                newAvatarUrl = await this.uploadStudentPhotoFile(id, photoFile);
+            }
+
+            const payload = {
+                full_name: document.getElementById('edit-learner-name').value.trim(),
+                gender: document.getElementById('edit-learner-gender').value,
+                date_of_birth: document.getElementById('edit-learner-dob').value,
+                class_id: parseInt(document.getElementById('edit-learner-class').value, 10),
+                special_learning_needs: document.getElementById('edit-learner-special-needs').checked ? 1 : 0,
+                special_needs_description: document.getElementById('edit-learner-needs-desc').value.trim()
+            };
+
+            if (newAvatarUrl) {
+                payload.avatar_url = newAvatarUrl;
+            }
+
             await API.put(`/api/parent/learners/${id}`, payload);
+
             this.closeEditLearnerModal();
             await this.loadParentLearners();
-            alert('Learner profile updated successfully.');
+            this.showToast('Learner profile and photo updated successfully!', 'success');
         } catch (err) {
             alertBox.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
         } finally {

@@ -44,6 +44,16 @@ class Response
         self::json($data, $statusCode, $message, []);
     }
 
+    public static function created(mixed $data = null, ?string $message = 'Created successfully'): void
+    {
+        self::json($data, 201, $message, []);
+    }
+
+    public static function badRequest(string $message = 'Bad request', array $errors = []): void
+    {
+        self::json(null, 400, $message, $errors);
+    }
+
     public static function error(string $message, int $statusCode = 400, array $errors = [], mixed $data = null): void
     {
         self::json($data, $statusCode, $message, $errors);

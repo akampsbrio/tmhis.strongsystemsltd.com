@@ -742,7 +742,13 @@
                         <tr>
                             <td><span class="badge badge-method">PUT</span></td>
                             <td><code>/api/parent/learners/{id}</code></td>
-                            <td>Update child demographics, special needs, or promote class (auto re-align subjects)</td>
+                            <td>Update child demographics, photo URL, special needs, or promote class (auto re-align subjects)</td>
+                            <td><code>parent</code> (owner), <code>admin</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-method">POST</span></td>
+                            <td><code>/api/parent/learners/{id}/avatar</code></td>
+                            <td>Upload student photo (JPG/PNG/WEBP/GIF $\le$ 4MB), save to uploads, update learner & sync linked user</td>
                             <td><code>parent</code> (owner), <code>admin</code></td>
                         </tr>
                         <tr>
@@ -812,6 +818,7 @@
             <h2 class="section-heading">1. Implementation Summary</h2>
             <ul>
                 <li><strong>Ugandan Primary Curriculum (NCDC P1–P7) Subjects Seeding:</strong> All 53 national standard subjects for Primary 1 through Primary 7 seeded into database with weekly hours, instruction language, and subject codes.</li>
+                <li><strong>Student Photographs & Circular Avatars:</strong> Full support for uploading high-resolution learner photographs (JPG, PNG, WEBP, GIF, SVG $\le$ 4MB) during registration and editing with real-time circular preview, graceful fallback initials, and automated topbar avatar synchronization for linked student user accounts.</li>
                 <li><strong>Automatic Subject Allocation:</strong> When a child is registered into any class (P1–P7), all active syllabus subjects for that class are automatically enrolled in <code>learner_subjects</code> in a single database transaction.</li>
                 <li><strong>Religious Education Customization:</strong> Supports selecting <strong>Christian Religious Education (CRE)</strong> vs. <strong>Islamic Religious Education (IRE)</strong> tracks upon enrollment.</li>
                 <li><strong>Duplicate Learner Guard:</strong> Strict multi-column uniqueness check on <code>(parent_id, full_name, date_of_birth)</code> preventing accidental duplicate registrations while permitting same names under different families.</li>
@@ -820,11 +827,11 @@
                 <li><strong>Optional Standalone Student Login:</strong> Parents can provision independent login credentials (role: <code>learner</code>) for upper primary children (P4–P7) to complete quizzes and read lessons independently.</li>
                 <li><strong>Multi-Tenant Data Isolation:</strong> Parents are strictly restricted to their own children; teachers access assigned cohorts; administrators maintain global audit oversight.</li>
                 <li><strong>Parent Extended Profile:</strong> Management of Ugandan National ID (NIN), District, Household Size, and Homeschooling Experience level.</li>
-                <li><strong>Offline Caching (PWA):</strong> Service worker shell updated to <code>tmhis-shell-v11</code> ensuring learner profiles and timetables remain accessible offline.</li>
+                <li><strong>Offline Caching (PWA):</strong> Service worker shell updated to <code>tmhis-shell-v12</code> ensuring learner profiles, photos, and timetables remain accessible offline.</li>
             </ul>
 
             <h2 class="section-heading">2. Verification & Automated Test Suite</h2>
-            <p>Run the Module 02 automated test runner (14/14 tests passing):</p>
+            <p>Run the Module 02 automated test runner (15/15 tests passing):</p>
             <pre><code>php tests/test_sprint2_learners.php</code></pre>
         </section>
 

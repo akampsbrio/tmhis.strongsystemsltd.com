@@ -21,6 +21,14 @@ const Auth = {
         }
     },
 
+    getToken() {
+        return API.getToken();
+    },
+
+    setToken(token) {
+        API.setToken(token);
+    },
+
     isAuthenticated() {
         return !!this.getUser() && !!API.getToken();
     },

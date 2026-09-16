@@ -151,6 +151,7 @@ class LearnerController
                 l.full_name,
                 l.date_of_birth,
                 l.gender,
+                l.avatar_url,
                 l.special_learning_needs,
                 l.special_needs_description,
                 l.enrolment_date,
@@ -220,6 +221,7 @@ class LearnerController
         $specialNeeds = !empty($data['special_learning_needs']) ? 1 : 0;
         $specialNeedsDesc = $specialNeeds ? trim((string)($data['special_needs_description'] ?? '')) : null;
         $religiousTrack = strtolower(trim((string)($data['religious_track'] ?? 'cre'))); // 'cre', 'ire', or 'all'
+        $avatarUrl = !empty($data['avatar_url']) ? trim((string)$data['avatar_url']) : null;
 
         // Determine parent_id
         $parentId = $user['parent_record']['parent_id'] ?? null;
@@ -311,9 +313,9 @@ class LearnerController
 
                 $uStmt = $db->prepare('
                     INSERT INTO users (
-                        role_id, username, email, full_name, password_hash, account_status, created_at, updated_at
+                        role_id, username, email, full_name, avatar_url, password_hash, account_status, created_at, updated_at
                     ) VALUES (
-                        :role_id, :username, :email, :full_name, :pwd, "active", NOW(), NOW()
+                        :role_id, :username, :email, :full_name, :avatar_url, :pwd, "active", NOW(), NOW()
                     )
                 ');
                 $uStmt->execute([
@@ -321,6 +323,7 @@ class LearnerController
                     ':username' => $username,
                     ':email' => $learnerEmail,
                     ':full_name' => $fullName,
+                    ':avatar_url' => $avatarUrl,
                     ':pwd' => password_hash($password, PASSWORD_BCRYPT)
                 ]);
                 $createdUserId = (int)$db->lastInsertId();
@@ -335,6 +338,7 @@ class LearnerController
                     full_name,
                     date_of_birth,
                     gender,
+                    avatar_url,
                     special_learning_needs,
                     special_needs_description,
                     enrolment_date,
@@ -348,6 +352,7 @@ class LearnerController
                     :full_name,
                     :date_of_birth,
                     :gender,
+                    :avatar_url,
                     :special_learning_needs,
                     :special_needs_description,
                     CURDATE(),
@@ -364,6 +369,7 @@ class LearnerController
                 ':full_name' => $fullName,
                 ':date_of_birth' => $dobStr,
                 ':gender' => $gender,
+                ':avatar_url' => $avatarUrl,
                 ':special_learning_needs' => $specialNeeds,
                 ':special_needs_description' => $specialNeedsDesc
             ]);
@@ -547,7 +553,7 @@ class LearnerController
 
     /**
      * PUT /api/parent/learners/{id}
-     * Update learner demographics, special needs accommodations, or class level
+     * Update learner demographics, special needs accommodations, photo or class level
      */
     public function update(int $id): void
     {
@@ -590,6 +596,7 @@ class LearnerController
         $specialNeeds = !empty($data['special_learning_needs']) ? 1 : 0;
         $specialNeedsDesc = $specialNeeds ? trim((string)($data['special_needs_description'] ?? '')) : null;
         $religiousTrack = strtolower(trim((string)($data['religious_track'] ?? 'cre')));
+        $avatarUrl = isset($data['avatar_url']) ? trim((string)$data['avatar_url']) : $currentLearner['avatar_url'];
 
         // Validate DOB
         $dob = DateTime::createFromFormat('Y-m-d', $dobStr);
@@ -631,6 +638,7 @@ class LearnerController
                     full_name = :full_name,
                     date_of_birth = :date_of_birth,
                     gender = :gender,
+                    avatar_url = :avatar_url,
                     special_learning_needs = :special_learning_needs,
                     special_needs_description = :special_needs_description,
                     updated_at = NOW()
@@ -641,16 +649,18 @@ class LearnerController
                 ':full_name' => $fullName,
                 ':date_of_birth' => $dobStr,
                 ':gender' => $gender,
+                ':avatar_url' => $avatarUrl,
                 ':special_learning_needs' => $specialNeeds,
                 ':special_needs_description' => $specialNeedsDesc,
                 ':id' => $id
             ]);
 
-            // Synchronize full_name in users table if learner has an account
+            // Synchronize full_name & avatar_url in users table if learner has an account
             if (!empty($currentLearner['user_id'])) {
-                $uStmt = $db->prepare('UPDATE users SET full_name = :name, updated_at = NOW() WHERE user_id = :uid');
+                $uStmt = $db->prepare('UPDATE users SET full_name = :name, avatar_url = :avatar, updated_at = NOW() WHERE user_id = :uid');
                 $uStmt->execute([
                     ':name' => $fullName,
+                    ':avatar' => $avatarUrl,
                     ':uid' => $currentLearner['user_id']
                 ]);
             }
@@ -859,6 +869,107 @@ class LearnerController
             $db->rollBack();
             Response::error('Failed to create student account: ' . $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * POST /api/parent/learners/{id}/avatar
+     * Upload or update a student's profile photo
+     */
+    public function uploadAvatar(int $id): void
+    {
+        $user = self::getAuthenticatedParent();
+        $db = Database::getConnection();
+
+        $curStmt = $db->prepare('SELECT * FROM learners WHERE learner_id = :id LIMIT 1');
+        $curStmt->execute([':id' => $id]);
+        $learner = $curStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$learner) {
+            Response::notFound('Learner not found.');
+        }
+
+        $isStaff = in_array($user['role_code'], ['administrator', 'curriculum_officer'], true);
+        $myParentId = $user['parent_record']['parent_id'] ?? null;
+
+        if (!$isStaff && (int)$learner['parent_id'] !== (int)$myParentId) {
+            Response::forbidden('Access denied. You can only update photos for your own children.');
+        }
+
+        $avatarUrl = null;
+
+        // 1. Check if binary file uploaded via multipart form
+        if (!empty($_FILES['avatar_file']['tmp_name'])) {
+            $file = $_FILES['avatar_file'];
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                Response::error('File upload failed with error code ' . $file['error'], 400);
+            }
+
+            if ($file['size'] > 4 * 1024 * 1024) {
+                Response::error('Photo file size must not exceed 4MB.', 422);
+            }
+
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_file($finfo, $file['tmp_name']);
+            finfo_close($finfo);
+
+            $allowedMimes = [
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+                'image/webp' => 'webp',
+                'image/gif' => 'gif',
+                'image/svg+xml' => 'svg'
+            ];
+
+            if (!isset($allowedMimes[$mime])) {
+                Response::error('Invalid image type. Supported formats: JPG, PNG, WEBP, GIF, SVG.', 422);
+            }
+
+            $ext = $allowedMimes[$mime];
+            $uploadDir = __DIR__ . '/../../storage/uploads/avatars';
+            if (!is_dir($uploadDir)) {
+                @mkdir($uploadDir, 0775, true);
+            }
+
+            $filename = 'learner_' . $id . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+            $destination = $uploadDir . '/' . $filename;
+
+            if (!move_uploaded_file($file['tmp_name'], $destination)) {
+                Response::error('Failed to save uploaded photo.', 500);
+            }
+
+            $avatarUrl = '/storage/uploads/avatars/' . $filename;
+        } else {
+            $body = Validator::getJsonInput();
+            if (!empty($body['avatar_url'])) {
+                $avatarUrl = trim((string)$body['avatar_url']);
+            }
+        }
+
+        if (!$avatarUrl) {
+            Response::error('Please select an image file to upload or provide an image URL.', 422);
+        }
+
+        $stmt = $db->prepare('UPDATE learners SET avatar_url = :url, updated_at = NOW() WHERE learner_id = :id');
+        $stmt->execute([':url' => $avatarUrl, ':id' => $id]);
+
+        // Also sync user account if learner has one
+        if (!empty($learner['user_id'])) {
+            $uStmt = $db->prepare('UPDATE users SET avatar_url = :url, updated_at = NOW() WHERE user_id = :uid');
+            $uStmt->execute([':url' => $avatarUrl, ':uid' => $learner['user_id']]);
+        }
+
+        AuditService::log(
+            (int)$user['user_id'],
+            'learner_avatar_updated',
+            "Updated photo for learner #{$id} ({$learner['full_name']})",
+            'learners',
+            $id
+        );
+
+        Response::success([
+            'learner_id' => $id,
+            'avatar_url' => $avatarUrl
+        ], 'Student photo updated successfully.');
     }
 
     /**

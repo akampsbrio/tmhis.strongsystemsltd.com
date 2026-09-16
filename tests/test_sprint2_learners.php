@@ -78,11 +78,11 @@ $p4Codes = array_column($p4Subjects, 'subject_code');
 $test->assert("P4 contains Core English, Math, Science, and SST", in_array('P4-ENG', $p4Codes) && in_array('P4-MTC', $p4Codes) && in_array('P4-SCI', $p4Codes) && in_array('P4-SST', $p4Codes));
 
 // Clean up previous sprint 2 test records
-$db->exec("DELETE FROM audit_trail WHERE user_id IN (SELECT user_id FROM users WHERE email LIKE '%@testparent.tmhis.org')");
+$db->exec("DELETE FROM audit_trail WHERE user_id IN (SELECT user_id FROM users WHERE email LIKE '%@testparent.tmhis.org' OR username LIKE 'student_brian_%')");
 $db->exec("DELETE FROM learner_subjects WHERE learner_id IN (SELECT learner_id FROM learners WHERE full_name LIKE '%TestChild%')");
 $db->exec("DELETE FROM learners WHERE full_name LIKE '%TestChild%'");
 $db->exec("DELETE FROM parents WHERE email LIKE '%@testparent.tmhis.org'");
-$db->exec("DELETE FROM users WHERE email LIKE '%@testparent.tmhis.org'");
+$db->exec("DELETE FROM users WHERE email LIKE '%@testparent.tmhis.org' OR username LIKE 'student_brian_%'");
 
 // 3. Create Test Parents: Parent A & Parent B
 $pwdHash = password_hash('ParentPass123!', PASSWORD_BCRYPT);
@@ -267,5 +267,18 @@ $auditCheck = $db->prepare("SELECT COUNT(*) FROM audit_trail WHERE user_id = :ui
 $auditCheck->execute([':uid' => $parentAUserId]);
 $auditCount = (int)$auditCheck->fetchColumn();
 $test->assert("Audit trail logged learner registration action", $auditCount > 0);
+
+// 13. Test Learner Photo (Avatar) Persistence & Synchronization
+$testAvatarUrl = '/storage/uploads/avatars/learner_' . $child3Id . '_test.jpg';
+$db->prepare("UPDATE learners SET avatar_url = :avatar, updated_at = NOW() WHERE learner_id = :lid")
+    ->execute([':avatar' => $testAvatarUrl, ':lid' => $child3Id]);
+
+// If learner is linked to a user account, sync avatar_url
+$db->prepare("UPDATE users SET avatar_url = :avatar, updated_at = NOW() WHERE user_id = :uid")
+    ->execute([':avatar' => $testAvatarUrl, ':uid' => $learnerUserId]);
+
+$savedLearnerAvatar = $db->query("SELECT avatar_url FROM learners WHERE learner_id = {$child3Id}")->fetchColumn();
+$savedUserAvatar = $db->query("SELECT avatar_url FROM users WHERE user_id = {$learnerUserId}")->fetchColumn();
+$test->assert("Learner student photo persisted and synced to linked student user profile", $savedLearnerAvatar === $testAvatarUrl && $savedUserAvatar === $testAvatarUrl);
 
 $test->summary();

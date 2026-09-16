@@ -18,6 +18,60 @@ class Validator
         return new self($data);
     }
 
+    /**
+     * Retrieve JSON body or fall back to $_POST
+     */
+    public static function getJsonInput(): array
+    {
+        $raw = file_get_contents('php://input');
+        if (!empty($raw)) {
+            $json = json_decode($raw, true);
+            if (is_array($json)) {
+                return $json;
+            }
+        }
+        return $_POST ?? [];
+    }
+
+    /**
+     * Declarative array-based validation helper
+     * Example: Validator::validate($data, ['full_name' => 'required|min:2|max:150'])
+     */
+    public static function validate(array $data, array $rules): array
+    {
+        $errors = [];
+
+        foreach ($rules as $field => $ruleString) {
+            $ruleList = explode('|', $ruleString);
+            $val = $data[$field] ?? null;
+            $label = ucfirst(str_replace('_', ' ', $field));
+
+            foreach ($ruleList as $rule) {
+                if ($rule === 'required') {
+                    if ($val === null || (is_string($val) && trim($val) === '') || (is_array($val) && empty($val))) {
+                        $errors[$field][] = "{$label} is required.";
+                    }
+                } elseif (str_starts_with($rule, 'min:')) {
+                    $min = (int)substr($rule, 4);
+                    if ($val !== null && mb_strlen((string)$val) < $min) {
+                        $errors[$field][] = "{$label} must be at least {$min} characters.";
+                    }
+                } elseif (str_starts_with($rule, 'max:')) {
+                    $max = (int)substr($rule, 4);
+                    if ($val !== null && mb_strlen((string)$val) > $max) {
+                        $errors[$field][] = "{$label} cannot exceed {$max} characters.";
+                    }
+                } elseif ($rule === 'email') {
+                    if (!empty($val) && !filter_var($val, FILTER_VALIDATE_EMAIL)) {
+                        $errors[$field][] = "{$label} must be a valid email address.";
+                    }
+                }
+            }
+        }
+
+        return $errors;
+    }
+
     public function required(string $field, string $label = ''): self
     {
         $label = $label ?: ucfirst(str_replace('_', ' ', $field));

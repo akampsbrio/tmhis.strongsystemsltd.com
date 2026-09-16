@@ -72,6 +72,7 @@ $router->post('/api/parent/learners', [LearnerController::class, 'create']);
 $router->get('/api/parent/learners/{id}', [LearnerController::class, 'show']);
 $router->put('/api/parent/learners/{id}', [LearnerController::class, 'update']);
 $router->patch('/api/parent/learners/{id}/status', [LearnerController::class, 'updateStatus']);
+$router->post('/api/parent/learners/{id}/avatar', [LearnerController::class, 'uploadAvatar']);
 $router->post('/api/parent/learners/{id}/create-login', [LearnerController::class, 'createLogin']);
 $router->get('/api/parent/profile', [LearnerController::class, 'getParentProfile']);
 $router->put('/api/parent/profile', [LearnerController::class, 'updateParentProfile']);
