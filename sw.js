@@ -1,7 +1,7 @@
 /**
  * TMHIS Service Worker - Offline Application Shell Cache
  */
-const CACHE_NAME = 'tmhis-shell-v4';
+const CACHE_NAME = 'tmhis-shell-v5';
 const STATIC_ASSETS = [
     '/',
     '/index.html',

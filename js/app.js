@@ -52,12 +52,8 @@ const App = {
 
             headerActions.innerHTML = `
                 <div class="user-menu-wrapper" id="user-menu-wrapper">
-                    <div class="user-menu-btn" onclick="App.toggleUserDropdown(event)" title="Click for profile & options">
+                    <div class="user-menu-btn" onclick="App.toggleUserDropdown(event)" title="${this.escapeHtml(displayName)} (${user.role_code})">
                         <img src="${this.escapeHtml(avatarUrl)}" alt="Avatar" class="user-avatar-img" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2563eb&color=fff&rounded=true'">
-                        <div class="user-menu-info">
-                            <span class="user-menu-name">${this.escapeHtml(displayName)}</span>
-                            ${this.formatRoleBadge(user.role_code)}
-                        </div>
                         <span class="user-menu-chevron">▼</span>
                     </div>
 
