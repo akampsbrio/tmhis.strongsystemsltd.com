@@ -149,9 +149,12 @@ const AssessmentsApp = {
                             ${activeLearner ? `Filtered to <strong>${App.escapeHtml(activeLearner.full_name)}</strong> (${App.escapeHtml(activeLearner.class_code || 'P1')}) & foundational primary classes below` : 'Uganda National Curriculum Assessments (P1–P7) with automated server scoring and feedback'}
                         </p>
                     </div>
-                    <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                    <div style="display:flex; gap:0.45rem; flex-wrap:wrap; align-items:center;">
+                        <a href="#parent-exams" class="btn btn-primary btn-sm" style="font-size:0.8rem; padding:0.35rem 0.75rem; display:inline-flex; align-items:center; gap:0.35rem;">
+                            <span>📋</span> Termly Examination Papers & UNEB Slips
+                        </a>
                         ${isStaff ? `
-                            <button class="btn btn-primary btn-sm" style="font-size:0.8rem; padding:0.35rem 0.75rem;" onclick="AssessmentsApp.openAuthorModal()">
+                            <button class="btn btn-outline btn-sm" style="font-size:0.8rem; padding:0.35rem 0.75rem;" onclick="AssessmentsApp.openAuthorModal()">
                                 ➕ Author Assessment
                             </button>
                         ` : ''}
@@ -922,7 +925,10 @@ const AssessmentsApp = {
                                 ${activeLearner ? `Tracking performance and quiz results for <strong>${App.escapeHtml(activeLearner.full_name)}</strong> (${App.escapeHtml(activeLearner.class_code || 'P1')})` : 'Comprehensive overview of quiz attempts, auto-scoring, and teacher reviews'}
                             </p>
                         </div>
-                        <div style="display:flex; gap:0.45rem;">
+                        <div style="display:flex; gap:0.45rem; flex-wrap:wrap; align-items:center;">
+                            <a href="#parent-exams" class="btn btn-primary btn-sm" style="font-size:0.8rem; padding:0.35rem 0.75rem; display:inline-flex; align-items:center; gap:0.35rem;">
+                                <span>📋</span> Termly Exams & Slips
+                            </a>
                             <button class="btn btn-secondary btn-sm" style="font-size:0.8rem; padding:0.35rem 0.75rem;" onclick="AssessmentsApp.init(document.getElementById('app-content'))">
                                 ✍️ Browse Assessments
                             </button>

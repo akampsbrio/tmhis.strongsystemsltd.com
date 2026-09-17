@@ -111,7 +111,10 @@ const ExamsApp = {
                         Official printable examination papers, standardized marking schemes, and Ugandan UNEB Division 1–4 auto-grading.
                     </p>
                 </div>
-                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+                    <a href="#parent-assessments" class="btn btn-outline btn-sm">
+                        <span>✍️</span> Quizzes & Assessments
+                    </a>
                     ${isStaff ? `
                         <button class="btn btn-primary btn-sm" onclick="ExamsApp.openCreateSetModal()">
                             <span>➕</span> Create Exam Set

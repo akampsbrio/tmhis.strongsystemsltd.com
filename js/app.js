@@ -887,7 +887,10 @@ const App = {
                     <div class="card">
                         <h3>Assessments & Scores <span>📝</span></h3>
                         <p>Track online/offline assessment results, objective scoring, and teacher remarks.</p>
-                        <a href="#parent-assessments" class="btn btn-secondary btn-sm">View Scores</a>
+                        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:auto;">
+                            <a href="#parent-assessments" class="btn btn-secondary btn-sm">View Scores</a>
+                            <a href="#parent-exams" class="btn btn-primary btn-sm"><span>📋</span> Termly Exams & Slips</a>
+                        </div>
                     </div>
                     <div class="card">
                         <h3>Offline & Sync <span>🔄</span></h3>
