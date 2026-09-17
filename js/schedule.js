@@ -918,11 +918,30 @@ const ScheduleApp = {
     },
 
     async updateStatus(scheduleId, newStatus) {
+        if (!navigator.onLine) {
+            await TMHIS_Sync.recordScheduleProgress(scheduleId, 0, this.selectedLearnerId, newStatus);
+            // Optimistically update local session
+            const s = this.schedules.find(item => item.schedule_id == scheduleId);
+            if (s) {
+                s.status = newStatus;
+                s.completed_date = (newStatus === 'completed') ? new Date().toISOString().split('T')[0] : null;
+            }
+            this.renderView(document.getElementById('app-content'));
+            return;
+        }
+
         try {
             await API.patch(`/api/parent/schedule/${scheduleId}/status`, { status: newStatus });
             await this.refreshData();
             this.renderView(document.getElementById('app-content'));
         } catch (err) {
+            if (!navigator.onLine || err.isOffline) {
+                await TMHIS_Sync.recordScheduleProgress(scheduleId, 0, this.selectedLearnerId, newStatus);
+                const s = this.schedules.find(item => item.schedule_id == scheduleId);
+                if (s) s.status = newStatus;
+                this.renderView(document.getElementById('app-content'));
+                return;
+            }
             alert('Failed to update status: ' + err.message);
         }
     },

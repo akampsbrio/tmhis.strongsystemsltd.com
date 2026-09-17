@@ -31,6 +31,7 @@ use App\Controllers\GuideController;
 use App\Controllers\ScheduleController;
 use App\Controllers\AssessmentController;
 use App\Controllers\ExamController;
+use App\Controllers\SyncController;
 use App\Utils\Response;
 use App\Utils\Router;
 
@@ -181,6 +182,13 @@ $router->delete('/api/officer/exams/papers/{id}', [ExamController::class, 'delet
 $router->delete('/api/teacher/exams/papers/{id}', [ExamController::class, 'deleteExamPaper']);
 $router->delete('/api/admin/exams/papers/{id}', [ExamController::class, 'deleteExamPaper']);
 $router->delete('/api/exams/papers/{id}', [ExamController::class, 'deleteExamPaper']);
+
+// Module 07: PWA Offline Mode and Synchronisation Routes
+$router->post('/api/devices/register', [SyncController::class, 'registerDevice']);
+$router->post('/api/sync/process', [SyncController::class, 'processSync']);
+$router->get('/api/sync/status', [SyncController::class, 'getStatus']);
+$router->get('/api/sync/download-package', [SyncController::class, 'downloadPackage']);
+$router->post('/api/sync/retry-failed', [SyncController::class, 'retryFailed']);
 
 // Dispatch router
 $router->dispatch();

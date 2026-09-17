@@ -64,6 +64,9 @@ const App = {
             const defaultDash = this.getDefaultDashboard();
 
             headerActions.innerHTML = `
+                <a href="javascript:void(0)" id="tmhis-connectivity-badge" class="connectivity-pill online" onclick="App.openOfflineCenterModal()" style="margin-right:8px;">
+                    <span>🟢</span> <span>Online</span>
+                </a>
                 <div class="user-menu-wrapper" id="user-menu-wrapper">
                     <button class="user-menu-btn" onclick="App.toggleUserDropdown(event)" title="${this.escapeHtml(displayName)} (${user.role_code})" type="button">
                         <img src="${this.escapeHtml(avatarUrl)}" alt="Avatar" class="user-avatar-img" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2563eb&color=fff&rounded=true'">
@@ -82,6 +85,9 @@ const App = {
                             </a>
                             <a href="#profile" class="dropdown-item" onclick="App.closeUserDropdown()">
                                 <span>👤</span> Profile & Password
+                            </a>
+                            <a href="#offline-center" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                <span>🔄</span> Offline Sync & Downloads
                             </a>
                             ${user.role_code === 'administrator' ? `
                                 <a href="#admin-users" class="dropdown-item" onclick="App.closeUserDropdown()">
@@ -122,7 +128,7 @@ const App = {
                                 <a href="#parent-exams" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📄</span> Termly Exam Sets & UNEB Grading
                                 </a>
-                                <a href="#parent-sync" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                <a href="#offline-center" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>🔄</span> Offline Sync Status
                                 </a>
                             ` : ''}
@@ -142,7 +148,7 @@ const App = {
                                 <a href="#learner-exams" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📄</span> Termly Exam Sets
                                 </a>
-                                <a href="#learner-downloads" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                <a href="#offline-center" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📥</span> Saved Offline Lessons
                                 </a>
                             ` : ''}
@@ -192,11 +198,20 @@ const App = {
                     </div>
                 </div>
             `;
+            if (typeof TMHIS_Sync !== 'undefined' && TMHIS_Sync.updateOnlineBadge) {
+                TMHIS_Sync.updateOnlineBadge();
+            }
         } else {
             headerActions.innerHTML = `
+                <a href="javascript:void(0)" id="tmhis-connectivity-badge" class="connectivity-pill online" onclick="App.openOfflineCenterModal()" style="margin-right:8px;">
+                    <span>🟢</span> <span>Online</span>
+                </a>
                 <a href="#login" class="btn btn-secondary btn-sm">Login</a>
                 <a href="#register" class="btn btn-primary btn-sm">Register Parent</a>
             `;
+            if (typeof TMHIS_Sync !== 'undefined' && TMHIS_Sync.updateOnlineBadge) {
+                TMHIS_Sync.updateOnlineBadge();
+            }
         }
     },
 
@@ -297,6 +312,8 @@ const App = {
             AssessmentsApp.init(content);
         } else if (currentHash === '#parent-exams' || currentHash === '#officer-exams' || currentHash === '#learner-exams' || currentHash === '#exams' || currentHash === '#exam-sets' || currentHash === '#grading') {
             ExamsApp.init(content);
+        } else if (currentHash === '#offline-center' || currentHash === '#parent-sync' || currentHash === '#offline-manager' || currentHash === '#learner-downloads' || currentHash === '#sync-status') {
+            this.renderOfflineCenter(content);
         } else {
             this.renderGenericDashboard(content, currentHash);
         }
@@ -3321,7 +3338,7 @@ const App = {
                 <div id="materials-alert" style="margin-bottom:1rem;"></div>
 
                 <!-- Status & Child Scope Switchers Bar -->
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:1.5rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:0.75rem;">
                     <!-- Status Pipeline Tabs (Resources Switcher) -->
                     <div class="materials-pipeline-tabs" style="margin:0;">
                         <button class="pipeline-tab active" id="tab-mat-all" onclick="App.setMaterialsTab('all')">
@@ -3345,8 +3362,8 @@ const App = {
 
                     ${role === 'parent' && parentLearners.length > 0 ? `
                         <!-- Quick Switch Child Pills Placed Next to Resources Switcher -->
-                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                            <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Child Scope:</span>
+                        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                            <span style="font-size:0.72rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Child Scope:</span>
                             <div class="quick-child-pills-container">
                                 <button type="button" 
                                         id="pill-child-all"
@@ -3385,23 +3402,23 @@ const App = {
                 </div>
 
                 <!-- Filter Controls Toolbar -->
-                <div class="card" style="padding:1rem 1.25rem; margin-bottom:1.5rem;">
-                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; align-items:flex-end;">
+                <div class="card" style="padding:0.5rem 0.85rem; margin-bottom:0.85rem; background:#fff; border:1px solid var(--border-color); border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.02);">
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:8px; align-items:flex-end;">
                         <div>
-                            <label style="font-size:0.8rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Class Level</label>
-                            <select id="mat-filter-class" class="form-control" onchange="App.handleMaterialClassFilter(this.value)">
+                            <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:2px; text-transform:uppercase; letter-spacing:0.3px;">Class Level</label>
+                            <select id="mat-filter-class" class="form-control" style="height:32px; font-size:0.82rem; padding:0.2rem 0.55rem; border-radius:6px; border:1px solid #cbd5e1;" onchange="App.handleMaterialClassFilter(this.value)">
                                 <option value="">All Classes (P1–P7)</option>
                             </select>
                         </div>
                         <div>
-                            <label style="font-size:0.8rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Subject</label>
-                            <select id="mat-filter-subject" class="form-control" onchange="App.handleMaterialSubjectFilter(this.value)">
+                            <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:2px; text-transform:uppercase; letter-spacing:0.3px;">Subject</label>
+                            <select id="mat-filter-subject" class="form-control" style="height:32px; font-size:0.82rem; padding:0.2rem 0.55rem; border-radius:6px; border:1px solid #cbd5e1;" onchange="App.handleMaterialSubjectFilter(this.value)">
                                 <option value="">All Subjects</option>
                             </select>
                         </div>
                         <div>
-                            <label style="font-size:0.8rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Content Format</label>
-                            <select id="mat-filter-type" class="form-control" onchange="App.handleMaterialTypeFilter(this.value)">
+                            <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:2px; text-transform:uppercase; letter-spacing:0.3px;">Content Format</label>
+                            <select id="mat-filter-type" class="form-control" style="height:32px; font-size:0.82rem; padding:0.2rem 0.55rem; border-radius:6px; border:1px solid #cbd5e1;" onchange="App.handleMaterialTypeFilter(this.value)">
                                 <option value="">All Formats</option>
                                 <option value="text">📄 Text & Documents (PDF, DOCX, EPUB)</option>
                                 <option value="video">🎬 Video (MP4, WebM)</option>
@@ -3411,15 +3428,15 @@ const App = {
                             </select>
                         </div>
                         <div>
-                            <label style="font-size:0.8rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Search Keywords</label>
-                            <input type="text" id="mat-filter-search" class="form-control" placeholder="Search title, description..." oninput="App.handleMaterialSearch(this.value)">
+                            <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:2px; text-transform:uppercase; letter-spacing:0.3px;">Search Keywords</label>
+                            <input type="text" id="mat-filter-search" class="form-control" placeholder="Search title, description..." style="height:32px; font-size:0.82rem; padding:0.25rem 0.6rem; border-radius:6px; border:1px solid #cbd5e1;" oninput="App.handleMaterialSearch(this.value)">
                         </div>
                     </div>
                 </div>
 
                 <!-- Summary Header -->
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                    <div id="materials-count-summary" style="font-size:0.9rem; font-weight:600; color:var(--text-muted);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                    <div id="materials-count-summary" style="font-size:0.82rem; font-weight:600; color:var(--text-muted);">
                         Loading resources...
                     </div>
                 </div>
@@ -4469,34 +4486,364 @@ const App = {
         `;
     },
 
-    /**
-     * Generic Dynamic Modal Presentation Helper
-     * @param {string} contentHtml
-     * @param {string} title
-     * @param {string} size - 'sm' | 'md' | 'lg' | 'xl'
-     */
-    showModal(contentHtml, title = '', size = 'lg') {
+    async renderOfflineCenter(container) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:3rem 1rem; color:var(--text-muted);">
+                <div class="spinner"></div>
+                <p style="margin-top:1rem;">Loading Offline Center & Sync Status...</p>
+            </div>
+        `;
+
+        try {
+            // Fetch local IndexedDB storage stats
+            const storageStats = (typeof TMHIS_DB !== 'undefined' && TMHIS_DB.getStorageStats) ? await TMHIS_DB.getStorageStats() : null;
+            const pendingItems = (typeof TMHIS_DB !== 'undefined' && TMHIS_DB.getAll) ? await TMHIS_DB.getAll('sync_queue') : [];
+
+            // Fetch server sync status if online
+            let serverStatus = null;
+            if (navigator.onLine && API.getToken()) {
+                try {
+                    const res = await API.get('/api/sync/status');
+                    serverStatus = res.data;
+                } catch (e) {}
+            }
+
+            // Fetch learners list for download selector
+            let learners = [];
+            if (Auth.getRole() === 'parent') {
+                try {
+                    if (navigator.onLine) {
+                        const lRes = await API.get('/api/parent/learners');
+                        learners = lRes.data || [];
+                    } else if (typeof TMHIS_DB !== 'undefined') {
+                        learners = await TMHIS_DB.getAll('learners') || [];
+                    }
+                } catch (e) {}
+            }
+
+            const isOnline = TMHIS_Sync ? TMHIS_Sync.isOnlineState : navigator.onLine;
+            const deviceUuid = TMHIS_Sync ? TMHIS_Sync.getOrCreateDeviceUuid() : 'Browser Storage';
+
+            container.innerHTML = `
+                <div class="fade-in" style="max-width:1100px; margin:0 auto; padding-bottom:3rem;">
+                    <!-- Header Bar -->
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:1.5rem;">
+                        <div>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <h2 style="margin:0;">📡 Offline Mode & Synchronisation Center</h2>
+                                <span class="connectivity-pill ${isOnline ? 'online' : 'offline'}">
+                                    <span>${isOnline ? '🟢 Online' : '🟠 Offline'}</span>
+                                </span>
+                            </div>
+                            <p style="color:var(--text-muted); margin-top:4px; font-size:0.88rem;">
+                                Continue homeschooling seamlessly without internet. Data is cached locally and safely synchronised upon reconnection.
+                            </p>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="btn btn-primary btn-sm" onclick="App.handleSyncNow()" ${!isOnline ? 'disabled title="Connect to internet to sync"' : ''}>
+                                🔄 Sync Now
+                            </button>
+                            <a href="${this.getDefaultDashboard()}" class="btn btn-secondary btn-sm">← Back to Dashboard</a>
+                        </div>
+                    </div>
+
+                    <div id="offline-center-alert"></div>
+
+                    <!-- Top Statistics Cards -->
+                    <div class="offline-center-grid">
+                        <div class="offline-stat-card">
+                            <div style="color:var(--text-muted); font-size:0.8rem; font-weight:700; text-transform:uppercase;">Network Connectivity</div>
+                            <div class="offline-stat-val" style="color:${isOnline ? '#059669' : '#ea580c'}; font-size:1.4rem;">
+                                ${isOnline ? '🟢 Connected' : '🟠 Offline Mode'}
+                            </div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">
+                                Device UUID: <code style="font-size:0.72rem;">${deviceUuid.substring(0, 18)}...</code>
+                            </div>
+                        </div>
+
+                        <div class="offline-stat-card">
+                            <div style="color:var(--text-muted); font-size:0.8rem; font-weight:700; text-transform:uppercase;">Local Pending Queue</div>
+                            <div class="offline-stat-val" style="color:#2563eb;">
+                                ${pendingItems.filter(i => i.status === 'pending' || i.status === 'failed').length}
+                            </div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">
+                                ${pendingItems.filter(i => i.status === 'synced').length} items synced locally
+                            </div>
+                        </div>
+
+                        <div class="offline-stat-card">
+                            <div style="color:var(--text-muted); font-size:0.8rem; font-weight:700; text-transform:uppercase;">Cached Lessons & Guides</div>
+                            <div class="offline-stat-val" style="color:#7c3aed;">
+                                ${storageStats ? (storageStats.counts.lessons + storageStats.counts.guides) : 0}
+                            </div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">
+                                ${storageStats ? storageStats.counts.assessments : 0} Assessments • ${storageStats?.storage?.usageMB || '0.00'} MB Used
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Offline Package Downloader Panel -->
+                    <div class="card" style="margin-bottom:1.5rem; padding:1.25rem;">
+                        <h3 style="margin-top:0; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
+                            <span>📥</span> Download Curriculum Package for Offline Study
+                        </h3>
+                        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">
+                            Download complete syllabus lessons, parent guides, quizzes, and assessments for your learners into local storage.
+                        </p>
+
+                        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
+                            ${learners.length > 0 ? `
+                                <div style="flex:1; min-width:200px;">
+                                    <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Select Child / Class</label>
+                                    <select id="download-learner-select" class="form-control" style="height:34px; font-size:0.84rem;">
+                                        ${learners.map(l => `<option value="${l.learner_id}">🎒 ${this.escapeHtml(l.full_name)} (${l.class_code || 'P' + l.class_level})</option>`).join('')}
+                                    </select>
+                                </div>
+                            ` : `
+                                <div style="flex:1; min-width:200px;">
+                                    <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Select Primary Class</label>
+                                    <select id="download-class-select" class="form-control" style="height:34px; font-size:0.84rem;">
+                                        <option value="1">Primary 1 (P1)</option>
+                                        <option value="2">Primary 2 (P2)</option>
+                                        <option value="3">Primary 3 (P3)</option>
+                                        <option value="4">Primary 4 (P4)</option>
+                                        <option value="5">Primary 5 (P5)</option>
+                                        <option value="6">Primary 6 (P6)</option>
+                                        <option value="7">Primary 7 (P7)</option>
+                                    </select>
+                                </div>
+                            `}
+
+                            <button type="button" class="btn btn-primary" onclick="App.handleDownloadPackage()" ${!isOnline ? 'disabled title="Requires internet connection"' : ''}>
+                                ⬇️ Download Offline Package
+                            </button>
+
+                            <button type="button" class="btn btn-secondary" onclick="App.handleClearOfflineData()">
+                                🗑️ Clear Local Cache
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Client Sync Queue Table -->
+                    <div class="card" style="margin-bottom:1.5rem; padding:1.25rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                            <h3 style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
+                                <span>📋</span> Local Sync Transactions (${pendingItems.length})
+                            </h3>
+                            ${pendingItems.some(i => i.status === 'failed') ? `
+                                <button class="btn btn-danger btn-sm" onclick="App.handleRetryFailedSync()">Retry Failed Items</button>
+                            ` : ''}
+                        </div>
+
+                        ${pendingItems.length === 0 ? `
+                            <div style="text-align:center; padding:2rem 1rem; color:var(--text-muted);">
+                                <span>✅</span> All offline activities are up to date with the TMHIS cloud.
+                            </div>
+                        ` : `
+                            <div style="overflow-x:auto;">
+                                <table class="sync-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Transaction UUID</th>
+                                            <th>Entity / Action</th>
+                                            <th>Created At</th>
+                                            <th>Status</th>
+                                            <th>Retries</th>
+                                            <th>Details / Error</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${pendingItems.map(item => `
+                                            <tr>
+                                                <td><code style="font-size:0.75rem;">${item.client_transaction_uuid.substring(0, 13)}...</code></td>
+                                                <td><strong>${this.escapeHtml(item.entity_type)}</strong> (${this.escapeHtml(item.operation)})</td>
+                                                <td style="color:var(--text-muted); font-size:0.75rem;">${new Date(item.created_at).toLocaleString()}</td>
+                                                <td><span class="sync-status-badge ${item.status}">${item.status}</span></td>
+                                                <td>${item.retry_count || 0}</td>
+                                                <td style="max-width:250px; font-size:0.75rem; color:${item.last_error ? '#b91c1c' : 'var(--text-muted)'};">
+                                                    ${this.escapeHtml(item.last_error || 'Ready to sync')}
+                                                </td>
+                                                <td>
+                                                    ${item.status === 'failed' || item.status === 'dead_letter' ? `
+                                                        <button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.7rem;" onclick="App.handleRetryFailedSync('${item.client_transaction_uuid}')">Retry</button>
+                                                    ` : `
+                                                        <span style="color:var(--text-muted); font-size:0.75rem;">-</span>
+                                                    `}
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        `}
+                    </div>
+
+                    <!-- Server Sync History Logs -->
+                    ${serverStatus && Array.isArray(serverStatus.recent_logs) && serverStatus.recent_logs.length > 0 ? `
+                        <div class="card" style="padding:1.25rem;">
+                            <h3 style="margin-top:0; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
+                                <span>📜</span> Cloud Synchronisation Audit Log
+                            </h3>
+                            <div style="overflow-x:auto;">
+                                <table class="sync-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Synced At</th>
+                                            <th>Sync Type</th>
+                                            <th>Direction</th>
+                                            <th>Status</th>
+                                            <th>Device</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${serverStatus.recent_logs.map(log => `
+                                            <tr>
+                                                <td style="font-size:0.75rem;">${new Date(log.synced_at).toLocaleString()}</td>
+                                                <td><span class="badge badge-secondary" style="font-size:0.72rem;">${this.escapeHtml(log.sync_type)}</span></td>
+                                                <td style="text-transform:uppercase; font-size:0.75rem; font-weight:600;">${this.escapeHtml(log.direction)}</td>
+                                                <td><span class="sync-status-badge ${log.sync_status}">${this.escapeHtml(log.sync_status)}</span></td>
+                                                <td style="font-size:0.75rem; color:var(--text-muted);">${this.escapeHtml(log.device_name || 'Web Browser')}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        } catch (err) {
+            container.innerHTML = `
+                <div class="alert alert-danger" style="margin:2rem auto; max-width:600px;">
+                    <h4>Failed to load Offline Center</h4>
+                    <p>${this.escapeHtml(err.message)}</p>
+                </div>
+            `;
+        }
+    },
+
+    openOfflineCenterModal() {
+        this.showModal('📡 TMHIS Offline Mode & Sync Manager', '<div id="offline-modal-inner"></div>');
+        const inner = document.getElementById('offline-modal-inner');
+        if (inner) {
+            this.renderOfflineCenter(inner);
+        }
+    },
+
+    async handleDownloadPackage() {
+        const learnerSelect = document.getElementById('download-learner-select');
+        const classSelect = document.getElementById('download-class-select');
+        const learnerId = learnerSelect ? learnerSelect.value : null;
+        const classId = classSelect ? classSelect.value : null;
+
+        const alertContainer = document.getElementById('offline-center-alert');
+        if (alertContainer) {
+            alertContainer.innerHTML = `
+                <div class="alert alert-info">
+                    <span>⏳ Downloading curriculum lessons, parental guides, and assessments for offline study... Please wait.</span>
+                </div>
+            `;
+        }
+
+        try {
+            const pkg = await TMHIS_Sync.downloadClassPackage(learnerId, classId);
+            if (alertContainer) {
+                alertContainer.innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>🎉 Offline Package Downloaded!</strong><br>
+                        Stored ${pkg.counts?.lessons || 0} Lessons, ${pkg.counts?.guides || 0} Parental Guides, and ${pkg.counts?.assessments || 0} Assessments locally.
+                    </div>
+                `;
+            }
+            // Refresh view
+            const content = document.getElementById('app-content');
+            const modalInner = document.getElementById('offline-modal-inner');
+            if (modalInner) this.renderOfflineCenter(modalInner);
+            else if (content && window.location.hash.includes('offline')) this.renderOfflineCenter(content);
+        } catch (err) {
+            if (alertContainer) {
+                alertContainer.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Download Failed:</strong> ${this.escapeHtml(err.message)}
+                    </div>
+                `;
+            }
+        }
+    },
+
+    async handleSyncNow() {
+        const alertContainer = document.getElementById('offline-center-alert');
+        if (alertContainer) {
+            alertContainer.innerHTML = `<div class="alert alert-info"><span>🔄 Synchronising offline queue with server...</span></div>`;
+        }
+
+        try {
+            await TMHIS_Sync.syncPendingQueue(true);
+            if (alertContainer) {
+                alertContainer.innerHTML = `<div class="alert alert-success"><span>✅ Synchronisation completed successfully!</span></div>`;
+            }
+            const content = document.getElementById('app-content');
+            const modalInner = document.getElementById('offline-modal-inner');
+            if (modalInner) this.renderOfflineCenter(modalInner);
+            else if (content && window.location.hash.includes('offline')) this.renderOfflineCenter(content);
+        } catch (err) {
+            if (alertContainer) {
+                alertContainer.innerHTML = `<div class="alert alert-danger"><span>✖ Synchronisation error: ${this.escapeHtml(err.message)}</span></div>`;
+            }
+        }
+    },
+
+    async handleRetryFailedSync(uuid = null) {
+        try {
+            await API.post('/api/sync/retry-failed', { uuid });
+            await TMHIS_Sync.syncPendingQueue(true);
+            const content = document.getElementById('app-content');
+            const modalInner = document.getElementById('offline-modal-inner');
+            if (modalInner) this.renderOfflineCenter(modalInner);
+            else if (content && window.location.hash.includes('offline')) this.renderOfflineCenter(content);
+        } catch (err) {
+            alert('Retry failed: ' + err.message);
+        }
+    },
+
+    async handleClearOfflineData() {
+        if (!confirm('Are you sure you want to clear all cached lessons and guides from your device? (Your pending sync submissions will be preserved).')) {
+            return;
+        }
+
+        try {
+            await TMHIS_DB.clear('lessons');
+            await TMHIS_DB.clear('guides');
+            await TMHIS_DB.clear('assessments');
+            await TMHIS_DB.clear('assessment_questions');
+            await TMHIS_DB.clear('assessment_options');
+            await TMHIS_DB.clear('subjects');
+
+            const content = document.getElementById('app-content');
+            const modalInner = document.getElementById('offline-modal-inner');
+            if (modalInner) this.renderOfflineCenter(modalInner);
+            else if (content && window.location.hash.includes('offline')) this.renderOfflineCenter(content);
+        } catch (err) {
+            alert('Failed to clear cache: ' + err.message);
+        }
+    },
+
+    showModal(title, contentHtml) {
         let overlay = document.getElementById('global-dynamic-modal');
         if (!overlay) {
             overlay = document.createElement('div');
             overlay.id = 'global-dynamic-modal';
-            overlay.className = 'modal-overlay';
+            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); z-index:9999; display:flex; align-items:center; justify-content:center; padding:1rem; opacity:0; transition:opacity 0.2s ease;';
             document.body.appendChild(overlay);
         }
 
-        const maxSizes = {
-            'sm': '480px',
-            'md': '680px',
-            'lg': '920px',
-            'xl': '1150px'
-        };
-        const maxWidth = maxSizes[size] || '920px';
-
-        overlay.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(15,23,42,0.7); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:99999; padding:1rem; opacity:1; pointer-events:auto; transition:opacity 0.2s ease;';
+        overlay.style.pointerEvents = 'auto';
+        overlay.style.opacity = '1';
 
         overlay.innerHTML = `
-            <div class="modal-box" style="background:#fff; width:100%; max-width:${maxWidth}; max-height:92vh; display:flex; flex-direction:column; border-radius:12px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); overflow:hidden; border:1px solid #cbd5e1; animation:modalSlideIn 0.2s ease-out;">
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:1rem 1.5rem; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+            <div class="card" style="width:100%; max-width:850px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; border-radius:12px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); border:1px solid #e2e8f0; animation:modalPop 0.2s ease-out;">
+                <div style="padding:1.1rem 1.5rem; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; background:#f8fafc;">
                     <h3 style="margin:0; font-size:1.25rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:0.5rem;">${this.escapeHtml(title)}</h3>
                     <button type="button" class="close-btn" onclick="App.hideModal()" style="background:none; border:none; font-size:1.6rem; color:#64748b; cursor:pointer; line-height:1; padding:0.2rem 0.5rem; border-radius:6px; transition:color 0.15s;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#64748b'">&times;</button>
                 </div>
@@ -4535,4 +4882,3 @@ const App = {
 
 // Start application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => App.init());
-

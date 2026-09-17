@@ -7,13 +7,15 @@
  * 2. When Offline: Automatically fall back to the cached copy of the application shell.
  */
 
-const CACHE_NAME = 'tmhis-shell-v50';
+const CACHE_NAME = 'tmhis-shell-v51';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
     '/css/app.css',
     '/js/api.js',
     '/js/auth.js',
+    '/js/db.js',
+    '/js/sync.js',
     '/js/guides.js',
     '/js/schedule.js',
     '/js/assessments.js',

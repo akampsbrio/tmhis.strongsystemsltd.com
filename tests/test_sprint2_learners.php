@@ -79,6 +79,9 @@ $test->assert("P4 contains Core English, Math, Science, and SST", in_array('P4-E
 
 // Clean up previous sprint 2 test records
 $db->exec("DELETE FROM audit_trail WHERE user_id IN (SELECT user_id FROM users WHERE email LIKE '%@testparent.tmhis.org' OR username LIKE 'student_brian_%')");
+$db->exec("DELETE FROM sync_queue WHERE user_id IN (SELECT user_id FROM users WHERE email LIKE '%@testparent.tmhis.org' OR username LIKE 'student_brian_%') OR learner_id IN (SELECT learner_id FROM learners WHERE full_name LIKE '%TestChild%')");
+$db->exec("DELETE FROM sync_log WHERE learner_id IN (SELECT learner_id FROM learners WHERE full_name LIKE '%TestChild%')");
+$db->exec("DELETE FROM devices WHERE user_id IN (SELECT user_id FROM users WHERE email LIKE '%@testparent.tmhis.org' OR username LIKE 'student_brian_%') OR learner_id IN (SELECT learner_id FROM learners WHERE full_name LIKE '%TestChild%')");
 $db->exec("DELETE FROM assessment_answers WHERE attempt_id IN (SELECT attempt_id FROM assessment_attempts WHERE learner_id IN (SELECT learner_id FROM learners WHERE full_name LIKE '%TestChild%'))");
 $db->exec("DELETE FROM assessment_results WHERE learner_id IN (SELECT learner_id FROM learners WHERE full_name LIKE '%TestChild%') OR scored_by IN (SELECT user_id FROM users WHERE email LIKE '%@testparent.tmhis.org' OR username LIKE 'student_brian_%')");
 $db->exec("DELETE FROM assessment_attempts WHERE learner_id IN (SELECT learner_id FROM learners WHERE full_name LIKE '%TestChild%')");

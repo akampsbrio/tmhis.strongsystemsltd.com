@@ -667,8 +667,41 @@ const AssessmentsApp = {
         `;
 
         try {
-            const attemptId = this.activeAttempt.attempt_id;
+            const attemptId = this.activeAttempt ? this.activeAttempt.attempt_id : 0;
             const answersArray = Object.values(this.answers);
+            const learnerId = this.activeAttempt?.learner_id || this.selectedLearnerId;
+            const assessmentId = this.activeAssessment?.assessment_id;
+
+            if (!navigator.onLine || !attemptId) {
+                // Submit offline via TMHIS_Sync
+                const offlineRes = await TMHIS_Sync.submitAssessment(
+                    assessmentId,
+                    learnerId,
+                    answersArray,
+                    this.timeSpent || 0
+                );
+
+                localStorage.removeItem(`tmhis_attempt_${assessmentId}_${learnerId}`);
+
+                container.innerHTML = `
+                    <div class="card" style="margin:2rem auto; max-width:650px; text-align:center; padding:2.5rem 1.5rem;">
+                        <div style="font-size:3.5rem; margin-bottom:1rem;">📡</div>
+                        <h2 style="color:var(--secondary); margin-bottom:0.5rem;">Assessment Saved Offline</h2>
+                        <p style="color:var(--text-muted); font-size:1rem; line-height:1.5;">
+                            Your responses have been securely saved to your device in <strong>TMHIS Offline Storage</strong>.
+                        </p>
+                        <div class="alert alert-info" style="margin:1.5rem 0; text-align:left; font-size:0.88rem;">
+                            <strong>Idempotency UUID:</strong> <code style="font-family:monospace;">${offlineRes.client_transaction_uuid}</code><br>
+                            <strong>Status:</strong> Queued for automatic cloud synchronisation upon reconnection.
+                        </div>
+                        <div style="display:flex; justify-content:center; gap:12px; margin-top:1.5rem;">
+                            <a href="#parent-dashboard" class="btn btn-primary">Return to Dashboard</a>
+                            <button class="btn btn-secondary" onclick="App.openOfflineCenterModal()">View Sync Queue</button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
 
             const submitRes = await API.post(`/api/attempts/${attemptId}/submit`, {
                 answers: answersArray,
@@ -676,12 +709,38 @@ const AssessmentsApp = {
             });
 
             // Clear stored local storage attempt key on successful submission
-            const learnerId = this.activeAttempt.learner_id;
-            const assessmentId = this.activeAssessment.assessment_id;
             localStorage.removeItem(`tmhis_attempt_${assessmentId}_${learnerId}`);
 
             await this.renderScorecard(attemptId);
         } catch (err) {
+            if (!navigator.onLine || err.isOffline || err.message?.includes('network') || err.message?.includes('offline')) {
+                const learnerId = this.activeAttempt?.learner_id || this.selectedLearnerId;
+                const assessmentId = this.activeAssessment?.assessment_id;
+                const answersArray = Object.values(this.answers);
+                const offlineRes = await TMHIS_Sync.submitAssessment(
+                    assessmentId,
+                    learnerId,
+                    answersArray,
+                    this.timeSpent || 0
+                );
+                localStorage.removeItem(`tmhis_attempt_${assessmentId}_${learnerId}`);
+
+                container.innerHTML = `
+                    <div class="card" style="margin:2rem auto; max-width:650px; text-align:center; padding:2.5rem 1.5rem;">
+                        <div style="font-size:3.5rem; margin-bottom:1rem;">📡</div>
+                        <h2 style="color:var(--secondary); margin-bottom:0.5rem;">Assessment Saved Offline</h2>
+                        <p style="color:var(--text-muted); font-size:1rem; line-height:1.5;">
+                            Network unavailable. Your answers were queued locally and will sync automatically once internet returns.
+                        </p>
+                        <div style="display:flex; justify-content:center; gap:12px; margin-top:1.5rem;">
+                            <a href="#parent-dashboard" class="btn btn-primary">Return to Dashboard</a>
+                            <button class="btn btn-secondary" onclick="App.openOfflineCenterModal()">View Sync Queue</button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
             container.innerHTML = `
                 <div class="alert alert-danger" style="margin:3rem auto; max-width:600px;">
                     <h4>Submission Error</h4>
