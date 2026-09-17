@@ -30,6 +30,7 @@ use App\Controllers\MaterialController;
 use App\Controllers\GuideController;
 use App\Controllers\ScheduleController;
 use App\Controllers\AssessmentController;
+use App\Controllers\ExamController;
 use App\Utils\Response;
 use App\Utils\Router;
 
@@ -152,6 +153,34 @@ $router->post('/api/attempts/{id}/submit', [AssessmentController::class, 'submit
 $router->get('/api/attempts/{id}/result', [AssessmentController::class, 'getAttemptResult']);
 $router->get('/api/parent/assessments/results', [AssessmentController::class, 'getLearnerResults']);
 $router->post('/api/results/{id}/manual-score', [AssessmentController::class, 'manualScoreEssay']);
+
+// Module 06.1 Annex: Termly Exam Sets, PDF Releases & UNEB Division Grading Engine
+$router->get('/api/exams/sets', [ExamController::class, 'getExamSets']);
+$router->get('/api/exams/sets/{id}', [ExamController::class, 'getExamSetDetails']);
+$router->post('/api/officer/exams/sets', [ExamController::class, 'createExamSet']);
+$router->post('/api/officer/exams/sets/{id}/papers', [ExamController::class, 'uploadExamPaper']);
+$router->post('/api/officer/exams/sets/{id}/publish', [ExamController::class, 'publishExamSet']);
+$router->post('/api/teacher/exams/sets', [ExamController::class, 'createExamSet']);
+$router->post('/api/teacher/exams/sets/{id}/papers', [ExamController::class, 'uploadExamPaper']);
+$router->post('/api/teacher/exams/sets/{id}/publish', [ExamController::class, 'publishExamSet']);
+$router->post('/api/admin/exams/sets', [ExamController::class, 'createExamSet']);
+$router->post('/api/admin/exams/sets/{id}/papers', [ExamController::class, 'uploadExamPaper']);
+$router->post('/api/admin/exams/sets/{id}/publish', [ExamController::class, 'publishExamSet']);
+$router->post('/api/exams/sets/{id}/papers', [ExamController::class, 'uploadExamPaper']);
+$router->post('/api/parent/exams/sets/{id}/marks', [ExamController::class, 'submitExamMarks']);
+$router->get('/api/parent/exams/submissions/{id}/report-card', [ExamController::class, 'getExamReportCard']);
+$router->get('/api/parent/exams/results', [ExamController::class, 'getLearnerExamResults']);
+
+// Deletion endpoints for exam sets and individual papers
+$router->delete('/api/officer/exams/sets/{id}', [ExamController::class, 'deleteExamSet']);
+$router->delete('/api/teacher/exams/sets/{id}', [ExamController::class, 'deleteExamSet']);
+$router->delete('/api/admin/exams/sets/{id}', [ExamController::class, 'deleteExamSet']);
+$router->delete('/api/exams/sets/{id}', [ExamController::class, 'deleteExamSet']);
+
+$router->delete('/api/officer/exams/papers/{id}', [ExamController::class, 'deleteExamPaper']);
+$router->delete('/api/teacher/exams/papers/{id}', [ExamController::class, 'deleteExamPaper']);
+$router->delete('/api/admin/exams/papers/{id}', [ExamController::class, 'deleteExamPaper']);
+$router->delete('/api/exams/papers/{id}', [ExamController::class, 'deleteExamPaper']);
 
 // Dispatch router
 $router->dispatch();

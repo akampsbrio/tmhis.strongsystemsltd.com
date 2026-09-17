@@ -166,11 +166,11 @@ const AssessmentsApp = {
                 ${childSelectorHtml}
 
                 <!-- Ultra-Compact Filters Bar -->
-                <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:0.45rem 0.75rem; margin-bottom:1rem; box-shadow:0 1px 2px rgba(0,0,0,0.02);">
-                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:0.5rem; align-items:center;">
+                <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:0.5rem 0.75rem; margin-bottom:1rem; box-shadow:0 1px 2px rgba(0,0,0,0.02);">
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:0.6rem; align-items:center;">
                         <div>
                             <label style="display:block; font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; color:#64748b; margin-bottom:0.15rem;">Class</label>
-                            <select id="filter-class" class="form-control" style="font-size:0.8rem; padding:0.25rem 0.5rem; height:32px; border-radius:6px; border:1px solid #cbd5e1;" onchange="AssessmentsApp.handleFilterChange()">
+                            <select id="filter-class" class="form-control" style="font-size:0.85rem; padding:0.35rem 0.6rem; min-height:36px; border-radius:6px; border:1px solid #cbd5e1;" onchange="AssessmentsApp.handleFilterChange()">
                                 <option value="">${activeLearner ? `All Allowed (${activeLearner.class_code || 'P1'} & below)` : 'All Classes (P1–P7)'}</option>
                                 ${availableClasses.map(c => `
                                     <option value="${c.class_id}" ${this.currentFilters.class_id == c.class_id ? 'selected' : ''}>
@@ -181,7 +181,7 @@ const AssessmentsApp = {
                         </div>
                         <div>
                             <label style="display:block; font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; color:#64748b; margin-bottom:0.15rem;">Subject</label>
-                            <select id="filter-subject" class="form-control" style="font-size:0.8rem; padding:0.25rem 0.5rem; height:32px; border-radius:6px; border:1px solid #cbd5e1;" onchange="AssessmentsApp.handleFilterChange()">
+                            <select id="filter-subject" class="form-control" style="font-size:0.85rem; padding:0.35rem 0.6rem; min-height:36px; border-radius:6px; border:1px solid #cbd5e1;" onchange="AssessmentsApp.handleFilterChange()">
                                 <option value="">All Subjects</option>
                                 ${this.subjects.map(s => `
                                     <option value="${s.subject_id}" ${this.currentFilters.subject_id == s.subject_id ? 'selected' : ''}>
@@ -192,7 +192,7 @@ const AssessmentsApp = {
                         </div>
                         <div>
                             <label style="display:block; font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; color:#64748b; margin-bottom:0.15rem;">Format</label>
-                            <select id="filter-type" class="form-control" style="font-size:0.8rem; padding:0.25rem 0.5rem; height:32px; border-radius:6px; border:1px solid #cbd5e1;" onchange="AssessmentsApp.handleFilterChange()">
+                            <select id="filter-type" class="form-control" style="font-size:0.85rem; padding:0.35rem 0.6rem; min-height:36px; border-radius:6px; border:1px solid #cbd5e1;" onchange="AssessmentsApp.handleFilterChange()">
                                 <option value="">All Formats</option>
                                 <option value="multiple_choice" ${this.currentFilters.assessment_type === 'multiple_choice' ? 'selected' : ''}>Multiple Choice (MCQ)</option>
                                 <option value="true_false" ${this.currentFilters.assessment_type === 'true_false' ? 'selected' : ''}>True / False</option>
@@ -200,8 +200,8 @@ const AssessmentsApp = {
                             </select>
                         </div>
                         <div>
-                            <label style="display:block; font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; color:#64748b; margin-bottom:0.15rem;">Search</label>
-                            <input type="text" id="filter-search" class="form-control" style="font-size:0.8rem; padding:0.25rem 0.5rem; height:32px; border-radius:6px; border:1px solid #cbd5e1;" placeholder="Search topic or title..." value="${App.escapeHtml(this.currentFilters.search)}" oninput="AssessmentsApp.handleSearchInput(event)">
+                            <label style="display:block; font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; color:#64748b; margin-bottom:0.15rem;">Search Title</label>
+                            <input type="text" id="filter-search" class="form-control" placeholder="Type keyword..." value="${App.escapeHtml(this.currentFilters.search)}" style="font-size:0.85rem; padding:0.35rem 0.6rem; min-height:36px; border-radius:6px; border:1px solid #cbd5e1;" oninput="AssessmentsApp.handleSearchInput(this.value)">
                         </div>
                     </div>
                 </div>

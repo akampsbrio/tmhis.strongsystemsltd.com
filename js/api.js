@@ -74,9 +74,10 @@ const API = {
     },
 
     post(url, data) {
+        const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
         return this.request(url, {
             method: 'POST',
-            body: JSON.stringify(data)
+            body: isFormData ? data : JSON.stringify(data)
         });
     },
 

@@ -1,7 +1,7 @@
 /**
  * TMHIS Service Worker - Offline Application Shell Cache
  */
-const CACHE_NAME = 'tmhis-shell-v36';
+const CACHE_NAME = 'tmhis-shell-v46';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -11,6 +11,7 @@ const STATIC_ASSETS = [
     '/js/guides.js',
     '/js/schedule.js',
     '/js/assessments.js',
+    '/js/exams.js',
     '/js/app.js',
     '/manifest.json'
 ];

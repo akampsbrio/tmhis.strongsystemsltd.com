@@ -84,6 +84,9 @@ const App = {
                                 <a href="#officer-materials" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📁</span> Learning Materials
                                 </a>
+                                <a href="#officer-exams" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📄</span> Exam Sets & UNEB Grading
+                                </a>
                                 <a href="#admin-audit" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>🛡️</span> Security & Audit Log
                                 </a>
@@ -107,6 +110,9 @@ const App = {
                                 <a href="#parent-assessments" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📝</span> Quizzes & Scores
                                 </a>
+                                <a href="#parent-exams" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📄</span> Termly Exam Sets & UNEB Grading
+                                </a>
                                 <a href="#parent-sync" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>🔄</span> Offline Sync Status
                                 </a>
@@ -123,6 +129,9 @@ const App = {
                                 </a>
                                 <a href="#learner-assessments" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>✍️</span> Assessments
+                                </a>
+                                <a href="#learner-exams" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📄</span> Termly Exam Sets
                                 </a>
                                 <a href="#learner-downloads" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📥</span> Saved Offline Lessons
@@ -141,6 +150,9 @@ const App = {
                                 <a href="#teacher-assessments" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>✅</span> Review & Grading
                                 </a>
+                                <a href="#officer-exams" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📄</span> Exam Sets & Mark Entry
+                                </a>
                                 <a href="#teacher-class-summary" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📈</span> Class Progress
                                 </a>
@@ -151,6 +163,9 @@ const App = {
                                 </a>
                                 <a href="#officer-materials" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📁</span> Learning Materials
+                                </a>
+                                <a href="#officer-exams" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📄</span> Exam Sets & PDF Releases
                                 </a>
                                 <a href="#officer-compliance" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📊</span> Compliance Reports
@@ -271,6 +286,8 @@ const App = {
             AssessmentsApp.renderPerformanceView(content);
         } else if (currentHash === '#learner-assessments' || currentHash === '#assessments' || currentHash === '#quizzes' || currentHash === '#take-assessment') {
             AssessmentsApp.init(content);
+        } else if (currentHash === '#parent-exams' || currentHash === '#officer-exams' || currentHash === '#learner-exams' || currentHash === '#exams' || currentHash === '#exam-sets' || currentHash === '#grading') {
+            ExamsApp.init(content);
         } else {
             this.renderGenericDashboard(content, currentHash);
         }
@@ -922,12 +939,17 @@ const App = {
         container.innerHTML = `
             <div>
                 <h2>Welcome, ${this.escapeHtml(displayName)} 👩‍🏫</h2>
-                <p style="color:var(--text-muted); margin-top:4px;">Supporting teacher oversight, assessments marking, and learner feedback</p>
+                <p style="color:var(--text-muted); margin-top:4px;">Supporting teacher oversight, exam set authoring, assessments marking, and learner feedback</p>
                 <div class="dashboard-grid">
                     <div class="card">
                         <h3>Assigned Learners <span>👥</span></h3>
                         <p>View home learners assigned to your subject specialty and class levels.</p>
                         <a href="#teacher-learners" class="btn btn-primary btn-sm">View Learners</a>
+                    </div>
+                    <div class="card">
+                        <h3>Exam Sets & UNEB Grading <span>📄</span></h3>
+                        <p>Create termly exam sets, upload papers, and supervise UNEB standard auto-grading.</p>
+                        <a href="#officer-exams" class="btn btn-primary btn-sm">Exam Sets & Papers</a>
                     </div>
                     <div class="card">
                         <h3>Assessment Review <span>✅</span></h3>
@@ -953,9 +975,14 @@ const App = {
                 <p style="color:var(--text-muted); margin-top:4px;">Uganda National Curriculum Development Center (NCDC / MoES) Oversight</p>
                 <div class="dashboard-grid">
                     <div class="card">
+                        <h3>Exam Sets & PDF Releases <span>📄</span></h3>
+                        <p>Release official printable exam sets, upload marking guides, and oversee grading.</p>
+                        <a href="#officer-exams" class="btn btn-primary btn-sm">Manage Exam Sets</a>
+                    </div>
+                    <div class="card">
                         <h3>Curriculum Management <span>📋</span></h3>
                         <p>Configure classes P1–P7, subjects, curriculum terms, and standard competencies.</p>
-                        <a href="#officer-classes" class="btn btn-primary btn-sm">Curriculum Setup</a>
+                        <a href="#officer-classes" class="btn btn-secondary btn-sm">Curriculum Setup</a>
                     </div>
                     <div class="card">
                         <h3>Learning Materials Review <span>📁</span></h3>
@@ -966,11 +993,6 @@ const App = {
                         <h3>Assessments & Item Banks <span>✍️</span></h3>
                         <p>Author questions, establish passing criteria, and publish primary quizzes.</p>
                         <a href="#learner-assessments" class="btn btn-secondary btn-sm">Manage Assessments</a>
-                    </div>
-                    <div class="card">
-                        <h3>National Compliance <span>📈</span></h3>
-                        <p>Inspect national and district coverage compliance against expected thresholds.</p>
-                        <a href="#officer-compliance" class="btn btn-secondary btn-sm">Compliance Reports</a>
                     </div>
                 </div>
             </div>
@@ -4399,6 +4421,69 @@ const App = {
                 </div>
             </div>
         `;
+    },
+
+    /**
+     * Generic Dynamic Modal Presentation Helper
+     * @param {string} contentHtml
+     * @param {string} title
+     * @param {string} size - 'sm' | 'md' | 'lg' | 'xl'
+     */
+    showModal(contentHtml, title = '', size = 'lg') {
+        let overlay = document.getElementById('global-dynamic-modal');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'global-dynamic-modal';
+            overlay.className = 'modal-overlay';
+            document.body.appendChild(overlay);
+        }
+
+        const maxSizes = {
+            'sm': '480px',
+            'md': '680px',
+            'lg': '920px',
+            'xl': '1150px'
+        };
+        const maxWidth = maxSizes[size] || '920px';
+
+        overlay.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(15,23,42,0.7); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:99999; padding:1rem; opacity:1; pointer-events:auto; transition:opacity 0.2s ease;';
+
+        overlay.innerHTML = `
+            <div class="modal-box" style="background:#fff; width:100%; max-width:${maxWidth}; max-height:92vh; display:flex; flex-direction:column; border-radius:12px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); overflow:hidden; border:1px solid #cbd5e1; animation:modalSlideIn 0.2s ease-out;">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:1rem 1.5rem; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                    <h3 style="margin:0; font-size:1.25rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:0.5rem;">${this.escapeHtml(title)}</h3>
+                    <button type="button" class="close-btn" onclick="App.hideModal()" style="background:none; border:none; font-size:1.6rem; color:#64748b; cursor:pointer; line-height:1; padding:0.2rem 0.5rem; border-radius:6px; transition:color 0.15s;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#64748b'">&times;</button>
+                </div>
+                <div style="padding:1.5rem; overflow-y:auto; flex:1; background:#ffffff;">
+                    ${contentHtml}
+                </div>
+            </div>
+        `;
+
+        overlay.onclick = (e) => {
+            if (e.target === overlay) {
+                this.hideModal();
+            }
+        };
+
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                this.hideModal();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    },
+
+    hideModal() {
+        const overlay = document.getElementById('global-dynamic-modal');
+        if (overlay) {
+            overlay.style.opacity = '0';
+            overlay.style.pointerEvents = 'none';
+            setTimeout(() => {
+                overlay.innerHTML = '';
+            }, 180);
+        }
     }
 };
 

@@ -378,7 +378,9 @@
             <a href="#mod-03" class="nav-link" onclick="Docs.navigate('mod-03')">✅ 03. Curriculum (P1–P7)</a>
             <a href="#mod-04" class="nav-link" onclick="Docs.navigate('mod-04')">✅ 04. Learning Materials</a>
             <a href="#mod-05" class="nav-link" onclick="Docs.navigate('mod-05')">✅ 05. Parental Guides & Schedule</a>
-            <a href="#mod-roadmap" class="nav-link" onclick="Docs.navigate('mod-roadmap')">⏳ 06–13. Sprints Roadmap</a>
+            <a href="#mod-06" class="nav-link" onclick="Docs.navigate('mod-06')">✅ 06. Assessments & Quizzes</a>
+            <a href="#mod-06-1" class="nav-link" onclick="Docs.navigate('mod-06-1')">✅ 06.1. Exam Sets & UNEB Grading</a>
+            <a href="#mod-roadmap" class="nav-link" onclick="Docs.navigate('mod-roadmap')">⏳ 07–13. Sprints Roadmap</a>
             
             <div class="nav-group-title">Operations</div>
             <a href="#credentials" class="nav-link" onclick="Docs.navigate('credentials')">🔑 Demo Credentials</a>
@@ -1409,6 +1411,75 @@
             <pre><code>php tests/test_sprint5_guides_scheduling.php</code></pre>
             <p style="margin-top: 0.5rem;">To verify the complete regression test suite across Sprint 0, 1, 2, 3, 4, and 5 (81/81 tests passing):</p>
             <pre><code>php tests/test_sprint0_sprint1.php && php tests/test_sprint2_learners.php && php tests/test_sprint3_curriculum.php && php tests/test_sprint4_materials.php && php tests/test_sprint5_guides_scheduling.php</code></pre>
+        </section>
+
+        <!-- SECTION: MODULE 06 -->
+        <section id="sec-mod-06" class="doc-section">
+            <h1 class="doc-title">Module 06: Online & Offline Assessments, Server Scoring & Gradebook</h1>
+            <p class="doc-subtitle">Objective & subjective quizzes, server-side scoring engine, and performance analytics</p>
+
+            <div class="callout">
+                <div class="callout-title">Module Status: ✅ Completed &amp; Verified (Sprint 6)</div>
+                <p>11/11 Module 06 tests passing &bull; Full server-side scoring integrity &bull; Gradebook analytics view</p>
+            </div>
+
+            <h2 class="section-heading">1. Supported Question Types</h2>
+            <ul>
+                <li><strong>Multiple Choice:</strong> Radio choices with server-side answer key validation.</li>
+                <li><strong>True / False:</strong> Binary verification questions.</li>
+                <li><strong>Short Answer:</strong> Text matching with auto-scoring.</li>
+                <li><strong>Structured Essay:</strong> Subjective problems with manual teacher/parent scoring.</li>
+            </ul>
+
+            <h2 class="section-heading">2. Automated Test Suite</h2>
+            <pre><code>php tests/test_sprint6_assessments_scoring.php</code></pre>
+        </section>
+
+        <!-- SECTION: MODULE 06.1 ANNEX -->
+        <section id="sec-mod-06-1" class="doc-section">
+            <h1 class="doc-title">Module 06.1 Annex: Termly Exam Sets, Printable PDF Releases &amp; UNEB Grading</h1>
+            <p class="doc-subtitle">Official printable PDF releases, Parent Mark Entry Portal, and Ugandan UNEB Division 1–4 auto-grading with strict F9 demotion rules</p>
+
+            <div class="callout">
+                <div class="callout-title">Module Status: ✅ Completed &amp; Verified (Sprint 6.1)</div>
+                <p>21/21 Module 06.1 tests passing &bull; 114/114 Cumulative regression tests passing across all sprints</p>
+            </div>
+
+            <h2 class="section-heading">1. Ugandan UNEB 9-Grade Stanine Scale</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr><th>Grade</th><th>Points</th><th>Score Range</th><th>UNEB Classification</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>D1</strong></td><td>1 pt</td><td>90% - 100%</td><td>Distinction 1 (Outstanding)</td></tr>
+                        <tr><td><strong>D2</strong></td><td>2 pts</td><td>80% - 89%</td><td>Distinction 2 (Excellent)</td></tr>
+                        <tr><td><strong>C3</strong></td><td>3 pts</td><td>70% - 79%</td><td>Credit 3 (Very Good)</td></tr>
+                        <tr><td><strong>C4</strong></td><td>4 pts</td><td>60% - 69%</td><td>Credit 4 (Good)</td></tr>
+                        <tr><td><strong>C5</strong></td><td>5 pts</td><td>55% - 59%</td><td>Credit 5 (Above Average)</td></tr>
+                        <tr><td><strong>C6</strong></td><td>6 pts</td><td>50% - 54%</td><td>Credit 6 (Credit Pass)</td></tr>
+                        <tr><td><strong>P7</strong></td><td>7 pts</td><td>45% - 49%</td><td>Pass 7 (Pass / Remediation)</td></tr>
+                        <tr><td><strong>P8</strong></td><td>8 pts</td><td>40% - 44%</td><td>Pass 8 (Minimum Pass)</td></tr>
+                        <tr><td><strong>F9</strong></td><td>9 pts</td><td>0% - 39%</td><td>Fail 9 (Ungraded / Fail)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 class="section-heading">2. Division Determination &amp; F9 Demotion Rules</h2>
+            <ul>
+                <li><strong>Division 1 (Aggregate 4 to 12):</strong> Requires passing all 4 core subjects (Grade 8 or better) with <strong>Zero F9s</strong>. Candidate must pass English and Mathematics.</li>
+                <li><strong>Crucial Demotion Rule:</strong> If a candidate attains an Aggregate between 4 and 12 but receives <strong>1 or more F9s</strong> (e.g. <code>1, 1, 1, 9 = Aggregate 12</code>), the candidate is <strong>STRICTLY DEMOTED to Division 2</strong>.</li>
+                <li><strong>Division 2 (Aggregate 13 to 24):</strong> Requires at least 3 passes and passing English or Math.</li>
+                <li><strong>Division 3 (Aggregate 25 to 28):</strong> Requires at least 3 passes.</li>
+                <li><strong>Division 4 (Aggregate 29 to 32):</strong> Requires at least 2 passes.</li>
+                <li><strong>Division U (Aggregate 33 to 36):</strong> Ungraded / fewer than 2 passes.</li>
+                <li><strong>Division X:</strong> Absent in one or more papers.</li>
+            </ul>
+
+            <h2 class="section-heading">3. Verification &amp; Automated Tests</h2>
+            <pre><code>php tests/test_sprint6_1_exams_grading.php</code></pre>
+            <p style="margin-top:0.5rem;">Cumulative regression runner across Sprints 0 through 6.1 (114/114 assertions passing):</p>
+            <pre><code>php tests/test_sprint0_sprint1.php && php tests/test_sprint2_learners.php && php tests/test_sprint3_curriculum.php && php tests/test_sprint4_materials.php && php tests/test_sprint5_guides_scheduling.php && php tests/test_sprint6_assessments_scoring.php && php tests/test_sprint6_1_exams_grading.php</code></pre>
         </section>
 
         <!-- SECTION: ROADMAP -->
