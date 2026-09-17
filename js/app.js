@@ -2,12 +2,21 @@
  * TMHIS Application Router & UI Controller
  */
 
-// Initialize PWA Service Worker
+// Initialize PWA Service Worker (Proactive Update & Network-First)
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('[TMHIS PWA] Service Worker registered with scope:', reg.scope))
+            .then(reg => {
+                console.log('[TMHIS PWA] Service Worker active with scope:', reg.scope);
+                // Proactively check server for SW updates on every page visit
+                reg.update();
+            })
             .catch(err => console.error('[TMHIS PWA] Service Worker registration failed:', err));
+    });
+
+    // When a new Service Worker takes over, let the page know
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        console.log('[TMHIS PWA] Updated Service Worker controller activated.');
     });
 }
 
@@ -1515,57 +1524,25 @@ const App = {
         const user = Auth.getUser();
         container.innerHTML = `
             <div style="max-width:1150px; margin:0 auto;">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:1.5rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">
                     <div>
-                        <h2>👨‍👩‍👧 My Home Learners</h2>
-                        <p style="color:var(--text-muted); margin-top:4px;">Ugandan Primary Syllabus (P1–P7) • Child Registration, Class Allocation & Enrolled Subjects</p>
+                        <h2 style="font-size:1.35rem; font-weight:800; color:var(--text-main); margin:0; letter-spacing:-0.01em;">👨‍👩‍👧 My Home Learners</h2>
+                        <p style="color:var(--text-muted); margin:0.15rem 0 0 0; font-size:0.82rem;">Ugandan Primary Syllabus (P1–P7) • Child Registration, Class Allocation & Enrolled Subjects</p>
                     </div>
-                    <div style="display:flex; gap:10px;">
-                        <a href="#parent-dashboard" class="btn btn-secondary btn-sm">← Back to Dashboard</a>
-                        <button class="btn btn-primary" onclick="App.openRegisterLearnerModal()">➕ Register New Child</button>
-                    </div>
-                </div>
-
-                <!-- Summary Stats Bar -->
-                <div class="stats-summary-bar" id="learners-stats-bar">
-                    <div class="summary-stat-box">
-                        <div class="summary-stat-icon">🎒</div>
-                        <div class="summary-stat-content">
-                            <h4 id="stat-total-learners">0</h4>
-                            <p>Enrolled Children</p>
-                        </div>
-                    </div>
-                    <div class="summary-stat-box">
-                        <div class="summary-stat-icon">📚</div>
-                        <div class="summary-stat-content">
-                            <h4 id="stat-active-classes">0</h4>
-                            <p>Primary Levels</p>
-                        </div>
-                    </div>
-                    <div class="summary-stat-box">
-                        <div class="summary-stat-icon">⏱️</div>
-                        <div class="summary-stat-content">
-                            <h4 id="stat-total-subjects">0</h4>
-                            <p>Active Subjects</p>
-                        </div>
-                    </div>
-                    <div class="summary-stat-box">
-                        <div class="summary-stat-icon">♿</div>
-                        <div class="summary-stat-content">
-                            <h4 id="stat-special-needs">0</h4>
-                            <p>Accommodations</p>
-                        </div>
+                    <div style="display:flex; gap:8px;">
+                        <a href="#parent-dashboard" class="btn btn-secondary btn-sm" style="font-size:0.8rem; padding:0.35rem 0.75rem;">← Dashboard</a>
+                        <button class="btn btn-primary btn-sm" style="font-size:0.8rem; padding:0.35rem 0.75rem;" onclick="App.openRegisterLearnerModal()">➕ Register New Child</button>
                     </div>
                 </div>
 
-                <!-- Filters & Search Bar -->
-                <div class="card" style="margin-bottom:1.5rem; padding:1rem 1.25rem;">
-                    <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;">
-                        <div style="flex:1; min-width:240px;">
-                            <input type="text" id="learner-search-input" class="form-control" placeholder="🔍 Search child by name..." oninput="App.filterLearnersGrid()">
+                <!-- Ultra-Thin & Compact Search & Filter Bar -->
+                <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:0.4rem 0.65rem; margin-bottom:1rem; box-shadow:0 1px 2px rgba(0,0,0,0.02);">
+                    <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between;">
+                        <div style="flex:1; min-width:200px;">
+                            <input type="text" id="learner-search-input" class="form-control" placeholder="🔍 Search child by name..." oninput="App.filterLearnersGrid()" style="height:32px; font-size:0.84rem; padding:0.25rem 0.6rem; border-radius:6px; border:1px solid #cbd5e1;">
                         </div>
-                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                            <select id="learner-class-filter" class="form-control" style="width:auto;" onchange="App.filterLearnersGrid()">
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <select id="learner-class-filter" class="form-control" style="width:auto; height:32px; font-size:0.84rem; padding:0.2rem 0.55rem; border-radius:6px; border:1px solid #cbd5e1;" onchange="App.filterLearnersGrid()">
                                 <option value="">All Classes (P1–P7)</option>
                                 <option value="P1">Primary 1 (P1)</option>
                                 <option value="P2">Primary 2 (P2)</option>
@@ -1575,7 +1552,7 @@ const App = {
                                 <option value="P6">Primary 6 (P6)</option>
                                 <option value="P7">Primary 7 (P7)</option>
                             </select>
-                            <select id="learner-status-filter" class="form-control" style="width:auto;" onchange="App.filterLearnersGrid()">
+                            <select id="learner-status-filter" class="form-control" style="width:auto; height:32px; font-size:0.84rem; padding:0.2rem 0.55rem; border-radius:6px; border:1px solid #cbd5e1;" onchange="App.filterLearnersGrid()">
                                 <option value="active">Active Only</option>
                                 <option value="all">All Statuses</option>
                                 <option value="inactive">Inactive</option>
@@ -1921,28 +1898,47 @@ const App = {
                             </div>
                         </div>
 
-                        <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.5rem;">
+                        <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.6rem;">
                             ${l.learner_username ? `
                                 <span>🔑 Student Login: <strong style="color:var(--text-main);">@${this.escapeHtml(l.learner_username)}</strong></span>
                             ` : `
                                 <span>🔒 Mode: <em>Parent-guided</em></span>
                             `}
                         </div>
+
+                        <!-- Direct Child Hub Links: Timetable, Exams, Tests, Materials -->
+                        <div style="background:var(--surface-color, #f8fafc); border:1px solid var(--border-color, #e2e8f0); border-radius:8px; padding:0.6rem 0.75rem; margin-bottom:0.85rem;">
+                            <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); margin-bottom:0.45rem; display:flex; justify-content:space-between; align-items:center;">
+                                <span>🚀 Direct Child Hub</span>
+                                <span style="font-size:0.7rem; font-weight:700; color:var(--primary);">${this.escapeHtml(l.class_code || 'P1')}</span>
+                            </div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.4rem;">
+                                <button class="btn btn-outline btn-sm" style="font-size:0.78rem; padding:0.35rem 0.45rem; display:inline-flex; align-items:center; gap:0.35rem; justify-content:center; text-align:center; font-weight:600;" onclick="App.viewChildSchedule(${l.learner_id})" title="Open Weekly Timetable & Lesson Pacing for ${this.escapeHtml(l.full_name)}">
+                                    <span>📅</span> Timetable
+                                </button>
+                                <button class="btn btn-outline btn-sm" style="font-size:0.78rem; padding:0.35rem 0.45rem; display:inline-flex; align-items:center; gap:0.35rem; justify-content:center; text-align:center; font-weight:600;" onclick="App.viewChildExams(${l.learner_id})" title="Open Termly Examination Sets & UNEB Grading for ${this.escapeHtml(l.full_name)}">
+                                    <span>📋</span> Exams
+                                </button>
+                                <button class="btn btn-outline btn-sm" style="font-size:0.78rem; padding:0.35rem 0.45rem; display:inline-flex; align-items:center; gap:0.35rem; justify-content:center; text-align:center; font-weight:600;" onclick="App.viewChildAssessments(${l.learner_id})" title="Open Quizzes, Tests & Assessment Results for ${this.escapeHtml(l.full_name)}">
+                                    <span>✍️</span> Tests & Scores
+                                </button>
+                                <button class="btn btn-outline btn-sm" style="font-size:0.78rem; padding:0.35rem 0.45rem; display:inline-flex; align-items:center; gap:0.35rem; justify-content:center; text-align:center; font-weight:600;" onclick="App.viewChildMaterials(${l.learner_id})" title="Browse Digital Materials for ${this.escapeHtml(l.full_name)}">
+                                    <span>📁</span> Materials
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="learner-card-actions">
+                    <div class="learner-card-actions" style="margin-top:auto;">
                         <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="App.openLearnerDetailModal(${l.learner_id})">
                             👁️ Profile
                         </button>
-                        <button class="btn btn-primary btn-sm" style="flex:1;" onclick="App.viewChildMaterials(${l.learner_id})" title="View learning materials for ${this.escapeHtml(l.full_name)} (P1 to ${l.class_code || 'P' + l.class_level})">
-                            📁 Materials
-                        </button>
-                        <button class="btn btn-secondary btn-sm" onclick="App.openEditLearnerModal(${l.learner_id})" title="Edit Learner">
-                            ✏️
+                        <button class="btn btn-secondary btn-sm" onclick="App.openEditLearnerModal(${l.learner_id})" title="Edit Learner Details">
+                            ✏️ Edit
                         </button>
                         ${!l.learner_username ? `
                             <button class="btn btn-secondary btn-sm" onclick="App.openCreateStudentLoginModal(${l.learner_id}, '${this.escapeHtml(l.full_name)}')" title="Create Student Login">
-                                🔑
+                                🔑 Login
                             </button>
                         ` : ''}
                         <button class="btn btn-secondary btn-sm" onclick="App.toggleLearnerStatus(${l.learner_id}, '${l.status}')" title="${isInactive ? 'Activate Learner' : 'Deactivate Learner'}">
@@ -2266,13 +2262,35 @@ const App = {
                     </div>
 
                     <!-- Demographics Card -->
-                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:var(--radius-sm); padding:1rem; margin-bottom:1.5rem; font-size:0.88rem;">
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:var(--radius-sm); padding:1rem; margin-bottom:1.25rem; font-size:0.88rem;">
                         <div><strong>Age:</strong> ${l.age} years old</div>
                         <div><strong>Date of Birth:</strong> ${l.date_of_birth}</div>
                         <div><strong>Gender:</strong> ${l.gender}</div>
                         <div><strong>Class Level:</strong> ${this.escapeHtml(l.class_name)} (Level ${l.class_level})</div>
                         <div><strong>Enrolment Date:</strong> ${l.enrolment_date}</div>
                         <div><strong>Parent/Guardian:</strong> ${this.escapeHtml(l.parent_name || '—')} (${this.escapeHtml(l.parent_district || 'Uganda')})</div>
+                    </div>
+
+                    <!-- Direct Child Hub Links in Profile Modal -->
+                    <div style="background:#fff; border:1px solid #bfdbfe; border-radius:var(--radius-sm); padding:0.85rem 1rem; margin-bottom:1.5rem;">
+                        <div style="font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--primary); margin-bottom:0.6rem; display:flex; justify-content:space-between; align-items:center;">
+                            <span>🚀 Direct Learning & Evaluation Hub</span>
+                            <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">${this.escapeHtml(l.class_code || 'Primary')}</span>
+                        </div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:0.5rem;">
+                            <button class="btn btn-outline btn-sm" style="font-size:0.82rem; padding:0.45rem 0.6rem; display:inline-flex; align-items:center; gap:0.4rem; justify-content:center; font-weight:600;" onclick="App.viewChildSchedule(${l.learner_id})">
+                                <span>📅</span> Timetable
+                            </button>
+                            <button class="btn btn-outline btn-sm" style="font-size:0.82rem; padding:0.45rem 0.6rem; display:inline-flex; align-items:center; gap:0.4rem; justify-content:center; font-weight:600;" onclick="App.viewChildExams(${l.learner_id})">
+                                <span>📋</span> Termly Exams
+                            </button>
+                            <button class="btn btn-outline btn-sm" style="font-size:0.82rem; padding:0.45rem 0.6rem; display:inline-flex; align-items:center; gap:0.4rem; justify-content:center; font-weight:600;" onclick="App.viewChildAssessments(${l.learner_id})">
+                                <span>✍️</span> Tests & Scores
+                            </button>
+                            <button class="btn btn-outline btn-sm" style="font-size:0.82rem; padding:0.45rem 0.6rem; display:inline-flex; align-items:center; gap:0.4rem; justify-content:center; font-weight:600;" onclick="App.viewChildMaterials(${l.learner_id})">
+                                <span>📁</span> Digital Materials
+                            </button>
+                        </div>
                     </div>
 
                     ${l.special_learning_needs ? `
@@ -3533,8 +3551,33 @@ const App = {
         await this.loadMaterials();
     },
 
+    viewChildSchedule(learnerId) {
+        if (typeof ScheduleApp !== 'undefined') {
+            ScheduleApp.selectedLearnerId = parseInt(learnerId, 10);
+        }
+        this.closeLearnerDetailModal();
+        window.location.hash = '#parent-schedule';
+    },
+
+    viewChildExams(learnerId) {
+        if (typeof ExamsApp !== 'undefined') {
+            ExamsApp.selectedLearnerId = parseInt(learnerId, 10);
+        }
+        this.closeLearnerDetailModal();
+        window.location.hash = '#parent-exams';
+    },
+
+    viewChildAssessments(learnerId) {
+        if (typeof AssessmentsApp !== 'undefined') {
+            AssessmentsApp.selectedLearnerId = parseInt(learnerId, 10);
+        }
+        this.closeLearnerDetailModal();
+        window.location.hash = '#parent-assessments';
+    },
+
     viewChildMaterials(learnerId) {
         this.materialsState.selectedLearnerId = String(learnerId);
+        this.closeLearnerDetailModal();
         window.location.hash = '#learner-materials';
     },
 

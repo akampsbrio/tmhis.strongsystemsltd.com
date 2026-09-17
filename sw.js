@@ -1,7 +1,13 @@
 /**
- * TMHIS Service Worker - Offline Application Shell Cache
+ * TMHIS Service Worker - Offline Application Shell Cache (Network-First Strategy)
+ * 
+ * Rules:
+ * 1. When Online: Always fetch the latest, updated assets directly from the network
+ *    and update the local cache in the background.
+ * 2. When Offline: Automatically fall back to the cached copy of the application shell.
  */
-const CACHE_NAME = 'tmhis-shell-v47';
+
+const CACHE_NAME = 'tmhis-shell-v50';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -16,24 +22,25 @@ const STATIC_ASSETS = [
     '/manifest.json'
 ];
 
-// Install Event: Pre-cache App Shell
+// Install Event: Pre-cache App Shell & activate immediately
 self.addEventListener('install', (event) => {
+    console.log('[TMHIS SW] Installing updated shell cache...');
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            console.log('[TMHIS SW] Pre-caching application shell...');
             return cache.addAll(STATIC_ASSETS);
         }).then(() => self.skipWaiting())
     );
 });
 
-// Activate Event: Clear Old Caches
+// Activate Event: Purge old cache versions & claim all open clients immediately
 self.addEventListener('activate', (event) => {
+    console.log('[TMHIS SW] Activating new shell cache...');
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((name) => {
                     if (name !== CACHE_NAME) {
-                        console.log('[TMHIS SW] Removing old cache:', name);
+                        console.log('[TMHIS SW] Purging obsolete cache version:', name);
                         return caches.delete(name);
                     }
                 })
@@ -42,18 +49,24 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Fetch Event: Network-first for /api/, Cache-first with Network Fallback for App Shell Assets
+// Fetch Event: Network-First for online devices, Cache-Fallback when offline
 self.addEventListener('fetch', (event) => {
-    const requestUrl = new URL(event.request.url);
+    const request = event.request;
+    const requestUrl = new URL(request.url);
 
-    // API requests are never served stale from shell cache (handled by IndexedDB sync engine in Module 07)
+    // Skip non-GET requests
+    if (request.method !== 'GET') {
+        return;
+    }
+
+    // 1. API requests: Direct network with offline JSON status fallback
     if (requestUrl.pathname.startsWith('/api/')) {
         event.respondWith(
-            fetch(event.request).catch(() => {
+            fetch(request).catch(() => {
                 return new Response(JSON.stringify({
                     success: false,
                     data: null,
-                    message: 'You are currently offline. Changes will sync when connection returns.',
+                    message: 'You are currently offline. Changes will sync when network connection returns.',
                     errors: ['offline_mode']
                 }), {
                     headers: { 'Content-Type': 'application/json' },
@@ -64,25 +77,41 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Static Assets & Shell: Stale-While-Revalidate Strategy
+    // 2. Navigation & App Shell Assets (HTML, CSS, JS): NETWORK-FIRST
+    // When connected to the network, ALWAYS load the updated copy from the server first!
     event.respondWith(
-        caches.match(event.request).then((cachedResponse) => {
-            const fetchPromise = fetch(event.request).then((networkResponse) => {
-                if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-                    const responseToCache = networkResponse.clone();
+        fetch(request)
+            .then((networkResponse) => {
+                // If received valid response from network, update cache with fresh asset
+                if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
+                    const responseClone = networkResponse.clone();
                     caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseToCache);
+                        cache.put(request, responseClone);
                     });
                 }
                 return networkResponse;
-            }).catch(() => {
-                // If offline and request is HTML navigation, fallback to root index.html
-                if (event.request.headers.get('accept')?.includes('text/html')) {
-                    return caches.match('/index.html');
+            })
+            .catch(async () => {
+                // Network unavailable (Device is offline or disconnected) -> Fallback to Cache
+                console.warn('[TMHIS SW] Device is offline. Serving resource from local cache:', request.url);
+                const cachedResponse = await caches.match(request);
+                if (cachedResponse) {
+                    return cachedResponse;
                 }
-            });
 
-            return cachedResponse || fetchPromise;
-        })
+                // If navigation request and not in cache, fallback to root index.html
+                if (request.headers.get('accept')?.includes('text/html') || request.mode === 'navigate') {
+                    const indexCached = await caches.match('/index.html');
+                    if (indexCached) {
+                        return indexCached;
+                    }
+                }
+
+                return new Response('Offline: Requested resource is not available in local cache.', {
+                    status: 503,
+                    statusText: 'Service Unavailable',
+                    headers: { 'Content-Type': 'text/plain' }
+                });
+            })
     );
 });
