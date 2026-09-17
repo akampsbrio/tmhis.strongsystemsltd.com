@@ -25,12 +25,12 @@ Welcome to the technical and educational documentation for the **Technology-Medi
 | **Module 01** | [Authentication, Users and RBAC](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/01_authentication.md) | Sprint 1 | ✅ **Completed** | 16 / 16 |
 | **Module 02** | Parent, Family & Learner Management | Sprint 2 | ✅ **Completed** | 18 / 18 |
 | **Module 03** | Curriculum Management (P1–P7) | Sprint 3 | ✅ **Completed** | 15 / 15 |
-| **Module 04** | Learning Materials & Digital Delivery | Sprint 4 | ✅ **Completed** | 15 / 15 |
+| **Module 04** | Learning Materials & Digital Delivery | Sprint 4 | ✅ **Completed** | 19 / 19 |
 | **Module 05** | [Parental Guides, Scheduling & Termly Pacing](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/05_parental_guides_and_scheduling.md) | Sprint 5 | ✅ **Completed** | 13 / 13 |
-| **Module 06** | [Online & Offline Assessments, Server-Side Scoring & Gradebook](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/06_assessments_and_scoring.md) | Sprint 6 | ✅ **Completed** | 10 / 10 |
+| **Module 06** | [Online & Offline Assessments, Server-Side Scoring & Gradebook](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/06_assessments_and_scoring.md) | Sprint 6 | ✅ **Completed** | 11 / 11 |
 | **Module 06.1 Annex** | [Termly Exam Sets, Printable PDF Releases & UNEB Division Grading Engine](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/06_1_annex_exam_sets_and_grading.md) | Sprint 6.1 | ✅ **Completed** | 21 / 21 |
-| **Module 07** | Offline PWA, Caching & Synchronisation | Sprint 7 | ⏳ Upcoming | Pending |
-| **Module 08** | Progress Tracking & Dashboards | Sprint 8 | ⏳ Upcoming | Pending |
+| **Module 07** | [Offline PWA, Caching & Synchronisation](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/07_offline_sync.md) | Sprint 7 | ✅ **Completed** | 11 / 11 |
+| **Module 08** | [Activities, Progress Tracking & Role-Based Dashboards](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/08_progress_dashboards.md) | Sprint 8 | ✅ **Completed** | 27 / 27 |
 | **Module 09** | Reporting & Compliance Analytics | Sprint 9 | ⏳ Upcoming | Pending |
 | **Module 10** | In-App Notifications Engine | Sprint 10 | ⏳ Upcoming | Pending |
 | **Module 11** | Messaging & Curriculum Circulars | Sprint 11 | ⏳ Upcoming | Pending |

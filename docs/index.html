@@ -380,7 +380,9 @@
             <a href="#mod-05" class="nav-link" onclick="Docs.navigate('mod-05')">✅ 05. Parental Guides & Schedule</a>
             <a href="#mod-06" class="nav-link" onclick="Docs.navigate('mod-06')">✅ 06. Assessments & Quizzes</a>
             <a href="#mod-06-1" class="nav-link" onclick="Docs.navigate('mod-06-1')">✅ 06.1. Exam Sets & UNEB Grading</a>
-            <a href="#mod-roadmap" class="nav-link" onclick="Docs.navigate('mod-roadmap')">⏳ 07–13. Sprints Roadmap</a>
+            <a href="#mod-07" class="nav-link" onclick="Docs.navigate('mod-07')">✅ 07. Offline PWA & Sync</a>
+            <a href="#mod-08" class="nav-link" onclick="Docs.navigate('mod-08')">✅ 08. Progress Dashboards</a>
+            <a href="#mod-roadmap" class="nav-link" onclick="Docs.navigate('mod-roadmap')">⏳ 09–13. Sprints Roadmap</a>
             
             <div class="nav-group-title">Operations</div>
             <a href="#credentials" class="nav-link" onclick="Docs.navigate('credentials')">🔑 Demo Credentials</a>
@@ -1482,9 +1484,73 @@
             <pre><code>php tests/test_sprint0_sprint1.php && php tests/test_sprint2_learners.php && php tests/test_sprint3_curriculum.php && php tests/test_sprint4_materials.php && php tests/test_sprint5_guides_scheduling.php && php tests/test_sprint6_assessments_scoring.php && php tests/test_sprint6_1_exams_grading.php</code></pre>
         </section>
 
+        <!-- SECTION: MODULE 07 -->
+        <section id="sec-mod-07" class="doc-section">
+            <h1 class="doc-title">Module 07: PWA Offline Architecture &amp; Synchronisation</h1>
+            <p class="doc-subtitle">Offline-First caching, IndexedDB event queue, and UUID-idempotent batch synchronisation engine</p>
+
+            <div class="callout">
+                <div class="callout-title">Module Status: ✅ Completed &amp; Verified (Sprint 7)</div>
+                <p>11/11 Module 07 tests passing &bull; Zero data loss offline storage &bull; Atomic batch deduplication</p>
+            </div>
+
+            <h2 class="section-heading">1. Offline Architecture Pillars</h2>
+            <ul>
+                <li><strong>Service Worker Cache Storage:</strong> Precaches core app shell (HTML, CSS, JS, icons) for offline booting.</li>
+                <li><strong>IndexedDB Client Stores:</strong> Stores downloaded lessons, parental guides, worksheets, and active offline quiz questions.</li>
+                <li><strong>Outbound Event Queue:</strong> Buffers offline lesson completions, heartbeat reading times, and quiz attempts with client-generated UUIDs.</li>
+                <li><strong>Two-Way Batch Synchronisation:</strong> <code>POST /api/sync/push-batch</code> processes queued events atomically on reconnection without duplicating progress or results.</li>
+            </ul>
+
+            <h2 class="section-heading">2. Automated Test Suite</h2>
+            <pre><code>php tests/test_sprint7_offline_sync.php</code></pre>
+        </section>
+
+        <!-- SECTION: MODULE 08 -->
+        <section id="sec-mod-08" class="doc-section">
+            <h1 class="doc-title">Module 08: Activities, Progress Tracking &amp; Role-Based Dashboards</h1>
+            <p class="doc-subtitle">Role-tailored dashboards for Learners, Parents, Teachers, and Curriculum Officers with weighted quiz scoring and NCDC syllabus tracking</p>
+
+            <div class="callout">
+                <div class="callout-title">Module Status: ✅ Completed &amp; Verified (Sprint 8)</div>
+                <p>27/27 Module 08 tests passing &bull; 102/102 Cumulative regression tests passing (100% Green)</p>
+            </div>
+
+            <h2 class="section-heading">1. Four Stakeholder Dashboards</h2>
+            <div class="grid-2">
+                <div class="card">
+                    <h4>🎒 Learner Dashboard</h4>
+                    <p>Visual syllabus completion progress meters, weighted assessment gradebook, explainable next recommended lesson, and recent activity timeline.</p>
+                </div>
+                <div class="card">
+                    <h4>👨‍👩‍👧 Parent Family Hub</h4>
+                    <p>Multi-child progress overview cards, family-wide completion velocity, next lesson per child, and attention alerts for struggling learners (&lt;50% quiz avg).</p>
+                </div>
+                <div class="card">
+                    <h4>👩‍🏫 Teacher Diagnostic Hub</h4>
+                    <p>Class learner roster with real-time risk indicators (<code>good</code>, <code>warning</code>, <code>critical</code>) and struggling topics diagnostic panel (pass rate &lt;60%).</p>
+                </div>
+                <div class="card">
+                    <h4>🏛️ Curriculum Officer Analytics</h4>
+                    <p>Macro primary syllabus coverage across P1–P7, subject attainment averages, and system-wide engagement metrics.</p>
+                </div>
+            </div>
+
+            <h2 class="section-heading">2. Mathematical Calculations</h2>
+            <ul>
+                <li><strong>Syllabus Completion %:</strong> <code>(Completed Active Lessons / Expected Active Lessons) &times; 100</code></li>
+                <li><strong>Weighted Quiz Average:</strong> <code>(&Sigma; Score Earned / &Sigma; Max Possible Marks) &times; 100</code> (avoids percentage distortion when quiz total marks differ).</li>
+            </ul>
+
+            <h2 class="section-heading">3. Automated Test Suite</h2>
+            <pre><code>php tests/test_sprint8_progress_dashboards.php</code></pre>
+            <p style="margin-top:0.5rem;">Cumulative regression runner across Sprints 0 through 8 (102/102 assertions passing):</p>
+            <pre><code>php tests/test_sprint0_sprint1.php && php tests/test_sprint2_learners.php && php tests/test_sprint3_curriculum.php && php tests/test_sprint4_materials.php && php tests/test_sprint5_guides_scheduling.php && php tests/test_sprint6_assessments_scoring.php && php tests/test_sprint6_1_exams_grading.php && php tests/test_sprint7_offline_sync.php && php tests/test_sprint8_progress_dashboards.php</code></pre>
+        </section>
+
         <!-- SECTION: ROADMAP -->
         <section id="sec-mod-roadmap" class="doc-section">
-            <h1 class="doc-title">Sprint & Module Roadmap (01 – 13)</h1>
+            <h1 class="doc-title">Sprint &amp; Module Roadmap (01 – 13)</h1>
             <p class="doc-subtitle">Master Development Plan sequence for TMHIS</p>
 
             <div class="table-responsive">
@@ -1497,20 +1563,20 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td>Sprint 0</td><td>Foundation, Architecture, PWA Shell & Error Handling</td><td><span class="badge badge-success">Completed</span></td></tr>
+                        <tr><td>Sprint 0</td><td>Foundation, Architecture, PWA Shell &amp; Error Handling</td><td><span class="badge badge-success">Completed</span></td></tr>
                         <tr><td>Sprint 1</td><td>Module 01: Authentication, Users and RBAC</td><td><span class="badge badge-success">Completed</span></td></tr>
                         <tr><td>Sprint 2</td><td>Module 02: Parent, Family and Learner Management</td><td><span class="badge badge-success">Completed</span></td></tr>
                         <tr><td>Sprint 3</td><td>Module 03: Curriculum Management (P1–P7)</td><td><span class="badge badge-success">Completed</span></td></tr>
-                        <tr><td>Sprint 4</td><td>Module 04: Learning Materials & Digital Delivery (300 MB)</td><td><span class="badge badge-success">Completed</span></td></tr>
-                        <tr><td>Sprint 5</td><td>Module 05: Parental Guides & Flexible Scheduling</td><td><span class="badge badge-success">Completed</span></td></tr>
-                        <tr><td>Sprint 6</td><td>Module 06: Online & Offline Assessments & Server-Side Scoring</td><td><span class="badge badge-success">Completed</span></td></tr>
-                        <tr><td>Sprint 7</td><td>Module 07: PWA Offline Architecture & Synchronisation</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
-                        <tr><td>Sprint 8</td><td>Module 08: Progress Tracking & Dashboards</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
-                        <tr><td>Sprint 9</td><td>Module 09: Reporting & Compliance Analytics</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 4</td><td>Module 04: Learning Materials &amp; Digital Delivery (300 MB)</td><td><span class="badge badge-success">Completed</span></td></tr>
+                        <tr><td>Sprint 5</td><td>Module 05: Parental Guides &amp; Flexible Scheduling</td><td><span class="badge badge-success">Completed</span></td></tr>
+                        <tr><td>Sprint 6</td><td>Module 06: Online &amp; Offline Assessments &amp; Server-Side Scoring</td><td><span class="badge badge-success">Completed</span></td></tr>
+                        <tr><td>Sprint 7</td><td>Module 07: PWA Offline Architecture &amp; Synchronisation</td><td><span class="badge badge-success">Completed</span></td></tr>
+                        <tr><td>Sprint 8</td><td>Module 08: Progress Tracking &amp; Dashboards</td><td><span class="badge badge-success">Completed</span></td></tr>
+                        <tr><td>Sprint 9</td><td>Module 09: Reporting &amp; Compliance Analytics</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
                         <tr><td>Sprint 10</td><td>Module 10: In-App Notifications Engine</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
-                        <tr><td>Sprint 11</td><td>Module 11: Messaging & Curriculum Circulars</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
-                        <tr><td>Sprint 12</td><td>Module 12: Audit Trail & Technical Administration</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
-                        <tr><td>Sprint 13</td><td>Module 13: Testing, Validation & Dissertation Evidence</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 11</td><td>Module 11: Messaging &amp; Curriculum Circulars</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 12</td><td>Module 12: Audit Trail &amp; Technical Administration</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 13</td><td>Module 13: Testing, Validation &amp; Dissertation Evidence</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
                     </tbody>
                 </table>
             </div>

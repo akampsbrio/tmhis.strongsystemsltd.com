@@ -32,6 +32,7 @@ use App\Controllers\ScheduleController;
 use App\Controllers\AssessmentController;
 use App\Controllers\ExamController;
 use App\Controllers\SyncController;
+use App\Controllers\ProgressController;
 use App\Utils\Response;
 use App\Utils\Router;
 
@@ -189,6 +190,18 @@ $router->post('/api/sync/process', [SyncController::class, 'processSync']);
 $router->get('/api/sync/status', [SyncController::class, 'getStatus']);
 $router->get('/api/sync/download-package', [SyncController::class, 'downloadPackage']);
 $router->post('/api/sync/retry-failed', [SyncController::class, 'retryFailed']);
+
+// Module 08: Activities, Progress Tracking & Dashboards Routes
+$router->get('/api/progress/learner/report', [ProgressController::class, 'getLearnerProgressReport']);
+$router->get('/api/progress/learner/{id}/report', [ProgressController::class, 'getLearnerProgressReport']);
+$router->get('/api/progress/learner', [ProgressController::class, 'getLearnerDashboard']);
+$router->get('/api/progress/learner/{id}', [ProgressController::class, 'getLearnerDashboard']);
+$router->get('/api/progress/parent', [ProgressController::class, 'getParentDashboard']);
+$router->get('/api/progress/teacher', [ProgressController::class, 'getTeacherDashboard']);
+$router->get('/api/progress/officer', [ProgressController::class, 'getOfficerAnalytics']);
+$router->post('/api/progress/lesson', [ProgressController::class, 'updateLessonProgress']);
+$router->patch('/api/progress/lesson', [ProgressController::class, 'updateLessonProgress']);
+$router->post('/api/progress/activity', [ProgressController::class, 'recordActivity']);
 
 // Dispatch router
 $router->dispatch();

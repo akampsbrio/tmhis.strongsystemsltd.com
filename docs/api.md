@@ -285,4 +285,141 @@ All endpoints return JSON wrapped in the standard response envelope:
   ```
 - **Description:** Allows authorized teachers/parents to award points for subjective essay questions and recalculates overall percentage.
 
+---
+
+## Module 06.1 Annex: Termly Exam Sets & UNEB Grading
+
+### 18. List Official Exam Sets
+- **Endpoint:** `GET /api/exams/sets?term_id=3&class_id=4`
+- **Headers:** `Authorization: Bearer <token>`
+- **Description:** Retrieves official exam sets (End of Term 1, 2, 3 Exams, Mock UNEB Sets) with status and papers count.
+
+### 19. Submit Exam Marks for Learner
+- **Endpoint:** `POST /api/exams/submit`
+- **Headers:** `Authorization: Bearer <parent_or_teacher_token>`
+- **Body:**
+  ```json
+  {
+    "exam_set_id": 1,
+    "learner_id": 14,
+    "papers": [
+      { "subject_code": "ENG", "raw_score": 88 },
+      { "subject_code": "MTC", "raw_score": 92 },
+      { "subject_code": "SCI", "raw_score": 84 },
+      { "subject_code": "SST", "raw_score": 80 }
+    ]
+  }
+  ```
+- **Description:** Records paper scores and triggers the server-side Ugandan UNEB 9-Grade stanine calculation and division assignment.
+
+---
+
+## Module 07: PWA Offline Architecture & Synchronisation
+
+### 20. Register Device
+- **Endpoint:** `POST /api/sync/register-device`
+- **Headers:** `Authorization: Bearer <token>`
+- **Body:**
+  ```json
+  {
+    "device_id": "dev_phone_s8_01",
+    "device_type": "android",
+    "client_version": "1.0.0"
+  }
+  ```
+- **Description:** Registers a client device token and initializes sync telemetry.
+
+### 21. Pull Delta Updates
+- **Endpoint:** `GET /api/sync/pull-updates?since=2026-09-01T00:00:00Z&class_id=4`
+- **Headers:** `Authorization: Bearer <token>`
+- **Description:** Delta sync endpoint retrieving newly created/modified syllabus items, materials, guides, and assessments since last sync.
+
+### 22. Push Offline Event Batch
+- **Endpoint:** `POST /api/sync/push-batch`
+- **Headers:** `Authorization: Bearer <token>`
+- **Body:**
+  ```json
+  {
+    "device_id": "dev_phone_s8_01",
+    "sync_uuid": "sync_batch_20260918_01",
+    "events": [
+      {
+        "type": "progress",
+        "learner_id": 14,
+        "lesson_id": 4,
+        "status": "completed",
+        "time_spent_minutes": 35
+      },
+      {
+        "type": "activity",
+        "learner_id": 14,
+        "material_id": 10,
+        "status": "completed",
+        "client_activity_uuid": "act_uuid_01",
+        "duration_seconds": 120
+      }
+    ]
+  }
+  ```
+- **Description:** Ingests offline-queued learning events with strict idempotency and deduplication.
+
+---
+
+## Module 08: Activities, Progress Tracking & Role-Based Dashboards
+
+### 23. Learner Self Dashboard
+- **Endpoint:** `GET /api/progress/learner`
+- **Headers:** `Authorization: Bearer <learner_token>`
+- **Description:** Retrieves real-time syllabus completion meters, weighted quiz averages, explainable next recommended lesson, pending assessments, and recent activity timeline.
+
+### 24. Learner Progress Details (RBAC Scoped)
+- **Endpoint:** `GET /api/progress/learner/{id}`
+- **Headers:** `Authorization: Bearer <parent_or_teacher_or_officer_token>`
+- **Description:** Retrieves progress for a specific learner. Enforces strict parent multi-tenant boundary checks.
+
+### 25. Parent Multi-Child Dashboard
+- **Endpoint:** `GET /api/progress/parent`
+- **Headers:** `Authorization: Bearer <parent_token>`
+- **Description:** Returns progress cards for all enrolled children under the parent, family completion velocity, next lesson per child, and attention flags (<50% quiz avg or zero completions).
+
+### 26. Teacher Class Roster & Diagnostic Panel
+- **Endpoint:** `GET /api/progress/teacher?class_id=4`
+- **Headers:** `Authorization: Bearer <teacher_token>`
+- **Description:** Returns class-level learner progress roster, risk indicators (`good`, `warning`, `critical`), and struggling topics panel (assessments with pass rates < 60%).
+
+### 27. Curriculum Officer Macro Analytics
+- **Endpoint:** `GET /api/progress/officer`
+- **Headers:** `Authorization: Bearer <officer_token>`
+- **Description:** High-level NCDC primary curriculum coverage across P1–P7, subject attainment averages, and system-wide engagement totals.
+
+### 28. Atomic Lesson Progress Update
+- **Endpoint:** `POST /api/progress/lesson`
+- **Headers:** `Authorization: Bearer <token>`
+- **Body:**
+  ```json
+  {
+    "learner_id": 14,
+    "lesson_id": 4,
+    "completion_status": "completed",
+    "time_spent_minutes": 40
+  }
+  ```
+- **Description:** Upserts lesson progress milestone (`not_started`, `in_progress`, `completed`), updates dates, and aggregates time spent.
+
+### 29. Record Learning Activity Heartbeat
+- **Endpoint:** `POST /api/progress/activity`
+- **Headers:** `Authorization: Bearer <token>`
+- **Body:**
+  ```json
+  {
+    "learner_id": 14,
+    "material_id": 12,
+    "activity_status": "completed",
+    "time_spent_seconds": 120,
+    "client_activity_uuid": "uuid-act-001"
+  }
+  ```
+- **Description:** Ingests material viewing heartbeats and reading time with client UUID idempotency.
+
+
 

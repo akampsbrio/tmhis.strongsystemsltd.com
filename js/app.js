@@ -293,17 +293,39 @@ const App = {
             this.renderAdminDashboard(content);
         } else if (currentHash === '#admin-users') {
             this.renderAdminUsers(content);
-        } else if (currentHash === '#parent-dashboard') {
-            this.renderParentDashboard(content);
+        } else if (currentHash === '#parent-dashboard' || currentHash === '#parent-progress' || currentHash === '#family-progress') {
+            if (typeof ProgressApp !== 'undefined') {
+                ProgressApp.initParentProgressDashboard(content);
+            } else {
+                this.renderParentDashboard(content);
+            }
         } else if (currentHash === '#parent-learners') {
             this.renderParentLearners(content);
-        } else if (currentHash === '#learner-dashboard') {
-            this.renderLearnerDashboard(content);
-        } else if (currentHash === '#teacher-dashboard') {
-            this.renderTeacherDashboard(content);
-        } else if (currentHash === '#officer-dashboard') {
-            this.renderOfficerDashboard(content);
-        } else if (currentHash === '#curriculum-explorer' || currentHash === '#officer-classes' || currentHash === '#learner-subjects') {
+        } else if (currentHash.startsWith('#learner-dashboard') || currentHash.startsWith('#learner-progress') || currentHash.startsWith('#my-progress')) {
+            const urlParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+            const paramId = urlParams.get('id') || urlParams.get('learner_id') || null;
+            const hashPart = window.location.hash.split('?')[0];
+            const pathId = hashPart.includes('/') ? hashPart.split('/')[1] : null;
+            const lid = paramId ? parseInt(paramId) : (pathId && !isNaN(parseInt(pathId)) ? parseInt(pathId) : null);
+
+            if (typeof ProgressApp !== 'undefined') {
+                ProgressApp.initLearnerDashboard(content, lid);
+            } else {
+                this.renderLearnerDashboard(content);
+            }
+        } else if (currentHash === '#teacher-dashboard' || currentHash === '#teacher-class-summary' || currentHash === '#teacher-progress') {
+            if (typeof ProgressApp !== 'undefined') {
+                ProgressApp.initTeacherDashboard(content);
+            } else {
+                this.renderTeacherDashboard(content);
+            }
+        } else if (currentHash === '#officer-dashboard' || currentHash === '#officer-analytics' || currentHash === '#officer-progress') {
+            if (typeof ProgressApp !== 'undefined') {
+                ProgressApp.initOfficerAnalytics(content);
+            } else {
+                this.renderOfficerDashboard(content);
+            }
+        } else if (currentHash === '#curriculum-explorer' || currentHash === '#officer-classes' || currentHash === '#learner-subjects' || currentHash === '#learner-lessons') {
             this.renderCurriculumExplorer(content);
         } else if (currentHash === '#officer-materials' || currentHash === '#learner-materials' || currentHash === '#learning-materials' || currentHash === '#materials-library') {
             this.renderMaterials(content);
