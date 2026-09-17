@@ -7,6 +7,7 @@ const GuidesApp = {
         class_id: '',
         term_id: '',
         education_level_target: '',
+        status: '',
         search: ''
     },
     terms: [],
@@ -29,7 +30,7 @@ const GuidesApp = {
             const [termsRes, classesRes, learnersRes] = await Promise.all([
                 API.get('/api/parent/terms'),
                 API.get('/api/parent/classes'),
-                API.get('/api/parent/learners')
+                API.get('/api/parent/learners').catch(() => ({ data: [] }))
             ]);
 
             this.terms = Array.isArray(termsRes.data) ? termsRes.data : [];
@@ -60,6 +61,7 @@ const GuidesApp = {
         if (this.currentFilters.class_id) params.append('class_id', this.currentFilters.class_id);
         if (this.currentFilters.term_id) params.append('term_id', this.currentFilters.term_id);
         if (this.currentFilters.education_level_target) params.append('education_level_target', this.currentFilters.education_level_target);
+        if (this.currentFilters.status) params.append('status', this.currentFilters.status);
         if (this.currentFilters.search) params.append('search', this.currentFilters.search);
         params.append('limit', '50');
 
@@ -89,10 +91,10 @@ const GuidesApp = {
             <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem;">
                 <div>
                     <h1 style="font-size:1.45rem; font-weight:700; color:#0f172a; margin:0 0 0.25rem 0; letter-spacing:-0.015em;">
-                        Parent Guides & Timetables
+                        Parent Guides & Timetables ${isOfficerOrAdmin ? '<span class="badge" style="background:#2563eb; color:#fff; font-size:0.75rem; vertical-align:middle; margin-left:6px;">Officer Portal</span>' : ''}
                     </h1>
                     <p style="color:#64748b; font-size:0.88rem; margin:0;">
-                        Step-by-step pedagogical instructions, flexible schedules, weekly, monthly, and 12-week planners.
+                        ${isOfficerOrAdmin ? 'Author, edit, publish, and manage official NCDC parental home teaching guides and assessment rubrics.' : 'Step-by-step pedagogical instructions, flexible schedules, weekly, monthly, and 12-week planners.'}
                     </p>
                 </div>
                 <div style="display:flex; gap:0.45rem; align-items:center; flex-wrap:wrap;">
@@ -106,8 +108,8 @@ const GuidesApp = {
                         Weekly Timetable
                     </a>
                     ${isOfficerOrAdmin ? `
-                        <button class="btn btn-primary btn-sm" style="padding:0.4rem 0.85rem; font-size:0.82rem; font-weight:600;" onclick="GuidesApp.openAuthoringModal()">
-                            + Author Guide
+                        <button class="btn btn-primary btn-sm" style="padding:0.4rem 0.95rem; font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:5px;" onclick="GuidesApp.openAuthoringModal()">
+                            <span>✍️</span> + Author New Guide
                         </button>
                     ` : ''}
                 </div>
@@ -117,19 +119,28 @@ const GuidesApp = {
             <div style="margin-bottom:1.25rem; padding:1rem 1.25rem; background:#fff; border:1px solid #e2e8f0; border-left:3px solid #2563eb; border-radius:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
                 <div>
                     <h4 style="font-size:0.92rem; font-weight:700; margin:0 0 0.15rem 0; color:#0f172a;">
-                        Pre-Plan Your Academic Schedule
+                        ${isOfficerOrAdmin ? 'Curriculum Alignment & Parental Guidance' : 'Pre-Plan Your Academic Schedule'}
                     </h4>
                     <p style="font-size:0.82rem; color:#64748b; margin:0;">
-                        Auto-distribute the 12-week NCDC syllabus or structure customized daily slots on the calendar.
+                        ${isOfficerOrAdmin ? 'Ensure all primary syllabus units (P1–P7) have matching step-by-step home teaching instructions and assessment checklists.' : 'Auto-distribute the 12-week NCDC syllabus or structure customized daily slots on the calendar.'}
                     </p>
                 </div>
                 <div style="display:flex; gap:0.45rem;">
-                    <a href="#parent-termly-planner" class="btn btn-primary btn-sm" style="font-weight:600; padding:0.35rem 0.85rem; font-size:0.8rem; border-radius:6px;">
-                        Open Termly Planner
-                    </a>
-                    <a href="#parent-monthly-planner" class="btn btn-secondary btn-sm" style="border-color:#e2e8f0; color:#475569; font-weight:600; padding:0.35rem 0.8rem; font-size:0.8rem; border-radius:6px;">
-                        Monthly Calendar
-                    </a>
+                    ${isOfficerOrAdmin ? `
+                        <button class="btn btn-primary btn-sm" style="font-weight:600; padding:0.35rem 0.85rem; font-size:0.8rem; border-radius:6px;" onclick="GuidesApp.openAuthoringModal()">
+                            + Create Guide Draft
+                        </button>
+                        <a href="#curriculum-explorer" class="btn btn-secondary btn-sm" style="border-color:#e2e8f0; color:#475569; font-weight:600; padding:0.35rem 0.8rem; font-size:0.8rem; border-radius:6px;">
+                            Curriculum Syllabus
+                        </a>
+                    ` : `
+                        <a href="#parent-termly-planner" class="btn btn-primary btn-sm" style="font-weight:600; padding:0.35rem 0.85rem; font-size:0.8rem; border-radius:6px;">
+                            Open Termly Planner
+                        </a>
+                        <a href="#parent-monthly-planner" class="btn btn-secondary btn-sm" style="border-color:#e2e8f0; color:#475569; font-weight:600; padding:0.35rem 0.8rem; font-size:0.8rem; border-radius:6px;">
+                            Monthly Calendar
+                        </a>
+                    `}
                 </div>
             </div>
 
@@ -207,12 +218,28 @@ const GuidesApp = {
                         </select>
                     </div>
 
+                    ${isOfficerOrAdmin ? `
+                    <!-- Status Filter for Officers/Admins -->
+                    <div>
+                        <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:0.2rem;">
+                            📊 Publication Status
+                        </label>
+                        <select id="guide-filter-status" class="form-control" onchange="GuidesApp.filterChange('status', this.value)" style="width:100%; height:34px; font-size:0.82rem; padding:0.25rem 0.5rem; border-radius:6px;">
+                            <option value="">All Statuses</option>
+                            <option value="published" ${this.currentFilters.status === 'published' ? 'selected' : ''}>Published Only</option>
+                            <option value="draft" ${this.currentFilters.status === 'draft' ? 'selected' : ''}>Drafts Only</option>
+                            <option value="under_review" ${this.currentFilters.status === 'under_review' ? 'selected' : ''}>Under Review</option>
+                            <option value="archived" ${this.currentFilters.status === 'archived' ? 'selected' : ''}>Archived</option>
+                        </select>
+                    </div>
+                    ` : ''}
+
                     <!-- Search Input -->
                     <div>
                         <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:0.2rem;">
                             🔍 Search Guides
                         </label>
-                        <input type="text" class="form-control" placeholder="Search topic or topic..." 
+                        <input type="text" class="form-control" placeholder="Search topic or keywords..." 
                             value="${App.escapeHtml(this.currentFilters.search)}" 
                             oninput="GuidesApp.debounceSearch(this.value)" style="width:100%; height:34px; font-size:0.82rem; padding:0.25rem 0.5rem; border-radius:6px;">
                     </div>
@@ -238,15 +265,24 @@ const GuidesApp = {
     },
 
     renderGuidesGrid() {
+        const user = Auth.getUser();
+        const role = user?.role_code || '';
+        const isOfficerOrAdmin = ['administrator', 'curriculum_officer'].includes(role);
+
         if (this.guides.length === 0) {
             return `
                 <div class="card" style="text-align:center; padding:3rem 1.5rem; background:var(--card-bg); border-radius:12px;">
                     <div style="font-size:3rem; margin-bottom:0.75rem;">📚</div>
                     <h3 style="font-size:1.2rem; margin-bottom:0.5rem;">No Parental Guides Found</h3>
                     <p style="color:var(--text-muted); max-width:450px; margin:0 auto 1.25rem;">
-                        No published guides match the selected class, term, or search filter.
+                        No guides match the selected class, term, status, or search filter.
                     </p>
-                    <button class="btn btn-secondary btn-sm" onclick="GuidesApp.clearFilters()">Clear All Filters</button>
+                    <div style="display:flex; justify-content:center; gap:8px;">
+                        <button class="btn btn-secondary btn-sm" onclick="GuidesApp.clearFilters()">Clear All Filters</button>
+                        ${isOfficerOrAdmin ? `
+                            <button class="btn btn-primary btn-sm" onclick="GuidesApp.openAuthoringModal()">+ Author First Guide</button>
+                        ` : ''}
+                    </div>
                 </div>
             `;
         }
@@ -261,16 +297,31 @@ const GuidesApp = {
                     };
                     const lvl = levelColors[g.education_level_target] || levelColors.intermediate;
 
+                    const statusBadges = {
+                        published: { bg: '#dcfce7', text: '#166534', label: '✅ Published' },
+                        draft: { bg: '#fef3c7', text: '#92400e', label: '📝 Draft' },
+                        under_review: { bg: '#e0e7ff', text: '#3730a3', label: '⏳ Under Review' },
+                        archived: { bg: '#f1f5f9', text: '#475569', label: '📦 Archived' }
+                    };
+                    const st = statusBadges[g.status] || statusBadges.published;
+
                     return `
                         <div class="card guide-card" style="padding:1.15rem; background:var(--card-bg); border-radius:12px; display:flex; flex-direction:column; justify-content:space-between; border:1px solid var(--border-color, #e5e7eb); transition:transform 0.15s ease, box-shadow 0.15s ease;">
                             <div>
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; flex-wrap:wrap; gap:0.25rem;">
-                                    <span style="font-size:0.75rem; font-weight:700; background:var(--primary, #2563eb); color:#fff; padding:0.15rem 0.5rem; border-radius:6px;">
-                                        ${App.escapeHtml(g.class_code || 'P' + g.class_level)} • ${App.escapeHtml(g.subject_name)}
-                                    </span>
-                                    <span style="font-size:0.72rem; font-weight:600; background:${lvl.bg}; color:${lvl.text}; padding:0.15rem 0.45rem; border-radius:6px;">
-                                        🎯 ${lvl.label}
-                                    </span>
+                                    <div style="display:flex; gap:0.35rem; align-items:center;">
+                                        <span style="font-size:0.75rem; font-weight:700; background:var(--primary, #2563eb); color:#fff; padding:0.15rem 0.5rem; border-radius:6px;">
+                                            ${App.escapeHtml(g.class_code || 'P' + g.class_level)} • ${App.escapeHtml(g.subject_name)}
+                                        </span>
+                                        <span style="font-size:0.72rem; font-weight:600; background:${lvl.bg}; color:${lvl.text}; padding:0.15rem 0.45rem; border-radius:6px;">
+                                            🎯 ${lvl.label}
+                                        </span>
+                                    </div>
+                                    ${isOfficerOrAdmin && g.status ? `
+                                        <span style="font-size:0.72rem; font-weight:700; background:${st.bg}; color:${st.text}; padding:0.15rem 0.45rem; border-radius:6px;">
+                                            ${st.label}
+                                        </span>
+                                    ` : ''}
                                 </div>
 
                                 <h3 style="font-size:1rem; font-weight:700; margin-bottom:0.4rem; line-height:1.4; color:var(--text-main);">
@@ -290,13 +341,27 @@ const GuidesApp = {
                                 </div>
                             </div>
 
-                            <div style="display:flex; gap:0.5rem; padding-top:0.6rem; border-top:1px solid var(--border-color, #e5e7eb);">
-                                <button class="btn btn-primary btn-sm" style="flex:1;" onclick="GuidesApp.openGuideModal(${g.guide_id})">
-                                    📖 Open Guide
-                                </button>
-                                <button class="btn btn-secondary btn-sm" title="Printable Format" onclick="GuidesApp.openPrintableModal(${g.guide_id})">
-                                    🖨️ Print
-                                </button>
+                            <div style="display:flex; flex-direction:column; gap:0.4rem; padding-top:0.6rem; border-top:1px solid var(--border-color, #e5e7eb);">
+                                <div style="display:flex; gap:0.4rem;">
+                                    <button class="btn btn-primary btn-sm" style="flex:1;" onclick="GuidesApp.openGuideModal(${g.guide_id})">
+                                        📖 Open Guide
+                                    </button>
+                                    <button class="btn btn-secondary btn-sm" title="Printable Format" onclick="GuidesApp.openPrintableModal(${g.guide_id})">
+                                        🖨️ Print
+                                    </button>
+                                </div>
+                                ${isOfficerOrAdmin ? `
+                                    <div style="display:flex; gap:0.4rem;">
+                                        <button class="btn btn-secondary btn-sm" style="flex:1; font-size:0.78rem; padding:0.25rem 0.5rem;" onclick="GuidesApp.openEditModal(${g.guide_id})">
+                                            ✏️ Edit
+                                        </button>
+                                        ${g.status !== 'published' ? `
+                                            <button class="btn btn-primary btn-sm" style="flex:1; font-size:0.78rem; padding:0.25rem 0.5rem; background:#16a34a; border-color:#16a34a;" onclick="GuidesApp.publishGuide(${g.guide_id})">
+                                                🚀 Publish
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                ` : ''}
                             </div>
                         </div>
                     `;
@@ -595,98 +660,148 @@ const GuidesApp = {
         }
     },
 
-    async openAuthoringModal() {
-        const container = document.getElementById('guide-modal-container');
-        if (!container) return;
+    async openAuthoringModal(guideData = null) {
+        let container = document.getElementById('guide-modal-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'guide-modal-container';
+            document.body.appendChild(container);
+        }
+
+        // Ensure terms and classes are loaded
+        if (!this.classes.length || !this.terms.length) {
+            try {
+                const [termsRes, classesRes] = await Promise.all([
+                    API.get('/api/parent/terms'),
+                    API.get('/api/parent/classes')
+                ]);
+                this.terms = Array.isArray(termsRes.data) ? termsRes.data : [];
+                this.classes = Array.isArray(classesRes.data) ? classesRes.data : [];
+            } catch (e) {
+                console.error('[GuidesApp] Error loading terms/classes for authoring modal:', e);
+            }
+        }
+
+        const isEdit = Boolean(guideData && guideData.guide_id);
+        const modalTitle = isEdit ? `✏️ Edit Parental Guide #${guideData.guide_id}` : '✍️ Author New Parental Guide Draft';
+        const submitLabel = isEdit ? 'Save Changes' : 'Save Guide Draft';
+        const onSubmitFn = isEdit ? `GuidesApp.submitEditGuide(event, ${guideData.guide_id})` : 'GuidesApp.submitAuthorGuide(event)';
+
+        const selectedClassId = guideData ? guideData.class_id : (this.classes[0]?.class_id || '');
+        const selectedTermId = guideData ? guideData.term_id : (this.terms.find(t => t.is_current)?.term_id || this.terms[0]?.term_id || '');
+        const selectedLevel = guideData?.education_level_target || 'intermediate';
+        const durationVal = guideData?.expected_duration_minutes || 40;
+        const titleVal = guideData?.title || '';
+        const objectivesVal = guideData?.learning_objectives || '';
+        const materialsVal = guideData?.materials_needed || '';
+        const stepsVal = guideData?.suggested_steps || guideData?.guide_body || '';
+        const pitfallsVal = guideData?.common_mistakes || '';
+        const checklistVal = guideData?.assessment_checklist || '';
 
         container.innerHTML = `
-            <div class="modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999; padding:1rem;">
-                <div class="modal-card" style="background:#fff; width:100%; max-width:800px; max-height:90vh; overflow-y:auto; border-radius:12px; padding:2rem;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-                        <h2 style="font-size:1.3rem; font-weight:700; margin:0;">✍️ Author New Parental Guide Draft</h2>
-                        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('guide-modal-container').innerHTML=''">&times;</button>
+            <div class="modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999; padding:1rem; backdrop-filter:blur(3px);">
+                <div class="modal-card" style="background:#fff; width:100%; max-width:820px; max-height:92vh; overflow-y:auto; border-radius:14px; padding:2rem; box-shadow:0 20px 40px rgba(0,0,0,0.2);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; padding-bottom:0.75rem; border-bottom:1px solid #e2e8f0;">
+                        <div>
+                            <h2 style="font-size:1.35rem; font-weight:800; color:#0f172a; margin:0 0 0.25rem 0;">${modalTitle}</h2>
+                            <p style="font-size:0.83rem; color:#64748b; margin:0;">National Curriculum Development Centre (NCDC) Home Pedagogical Format</p>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" style="font-size:1.2rem; line-height:1; padding:0.3rem 0.6rem;" onclick="document.getElementById('guide-modal-container').innerHTML=''">&times;</button>
                     </div>
 
-                    <form id="author-guide-form" onsubmit="GuidesApp.submitAuthorGuide(event)">
+                    <form id="author-guide-form" onsubmit="${onSubmitFn}">
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
                             <div>
-                                <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.25rem;">Class Level *</label>
+                                <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Primary Class Level *</label>
                                 <select id="author-class" class="form-control" required onchange="GuidesApp.updateAuthorSubjects(this.value)">
                                     <option value="">Select Class</option>
-                                    ${this.classes.map(c => `<option value="${c.class_id}">${c.class_code} (${c.class_name})</option>`).join('')}
+                                    ${this.classes.map(c => `<option value="${c.class_id}" ${c.class_id == selectedClassId ? 'selected' : ''}>${c.class_code} (${c.class_name})</option>`).join('')}
                                 </select>
                             </div>
                             <div>
-                                <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.25rem;">Academic Term *</label>
+                                <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Academic Term *</label>
                                 <select id="author-term" class="form-control" required>
-                                    ${this.terms.map(t => `<option value="${t.term_id}" ${t.is_current ? 'selected' : ''}>${t.term_name} (${t.academic_year})</option>`).join('')}
+                                    ${this.terms.map(t => `<option value="${t.term_id}" ${t.term_id == selectedTermId ? 'selected' : ''}>${t.term_name} (${t.academic_year}) ${t.is_current ? '⭐ Active' : ''}</option>`).join('')}
                                 </select>
                             </div>
                         </div>
 
                         <div style="margin-bottom:1rem;">
-                            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.25rem;">Subject *</label>
+                            <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Curriculum Subject *</label>
                             <select id="author-subject" class="form-control" required>
-                                <option value="">Select Class First</option>
+                                <option value="">Loading subjects...</option>
                             </select>
                         </div>
 
                         <div style="margin-bottom:1rem;">
-                            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.25rem;">Guide Title *</label>
-                            <input type="text" id="author-title" class="form-control" placeholder="e.g. Parent Guide: Teaching Place Value with Abacus" required>
+                            <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Guide Title *</label>
+                            <input type="text" id="author-title" class="form-control" value="${App.escapeHtml(titleVal)}" placeholder="e.g. Parent Guide: Teaching Place Value with Abacus and Bundle Sticks" required>
                         </div>
 
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
                             <div>
-                                <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.25rem;">Target Parent Education Level</label>
+                                <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Target Parent Education Level</label>
                                 <select id="author-level" class="form-control">
-                                    <option value="basic">Basic (Everyday simple analogies)</option>
-                                    <option value="intermediate" selected>Intermediate (Structured textbook steps)</option>
-                                    <option value="advanced">Advanced (Deeper theoretical rigor)</option>
+                                    <option value="basic" ${selectedLevel === 'basic' ? 'selected' : ''}>Basic (Everyday household analogies)</option>
+                                    <option value="intermediate" ${selectedLevel === 'intermediate' ? 'selected' : ''}>Intermediate (Structured textbook steps)</option>
+                                    <option value="advanced" ${selectedLevel === 'advanced' ? 'selected' : ''}>Advanced (Analytical rigor / PLE depth)</option>
                                 </select>
                             </div>
                             <div>
-                                <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.25rem;">Expected Duration (Minutes)</label>
-                                <input type="number" id="author-duration" class="form-control" value="40" min="10" max="180">
+                                <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Expected Duration (Minutes)</label>
+                                <input type="number" id="author-duration" class="form-control" value="${durationVal}" min="10" max="180">
                             </div>
                         </div>
 
                         <div style="margin-bottom:1rem;">
-                            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.25rem;">Learning Objectives</label>
-                            <textarea id="author-objectives" class="form-control" rows="3" placeholder="- Identify place values&#10;- Group numbers"></textarea>
+                            <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">🎯 Learning Objectives</label>
+                            <textarea id="author-objectives" class="form-control" rows="3" placeholder="- Identify units, tens, and hundreds&#10;- Relate concrete objects to written numerals">${App.escapeHtml(objectivesVal)}</textarea>
                         </div>
 
                         <div style="margin-bottom:1rem;">
-                            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.25rem;">Materials Needed</label>
-                            <textarea id="author-materials" class="form-control" rows="2" placeholder="Bottle tops, paper, pencil"></textarea>
+                            <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">📦 Required Household & Learning Items</label>
+                            <textarea id="author-materials" class="form-control" rows="2" placeholder="Bottle tops, sticks, rubber bands, standard primary exercise book">${App.escapeHtml(materialsVal)}</textarea>
                         </div>
 
                         <div style="margin-bottom:1rem;">
-                            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.25rem;">Step-by-Step Instructions & Guide Body *</label>
-                            <textarea id="author-steps" class="form-control" rows="6" placeholder="Step 1: Warmup&#10;Step 2: Practical activity&#10;Step 3: Review" required></textarea>
+                            <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">📋 Step-by-Step Home Teaching Instructions *</label>
+                            <textarea id="author-steps" class="form-control" rows="6" placeholder="Step 1: Introduction & Real-World Warmup&#10;Step 2: Guided hands-on demonstration&#10;Step 3: Independent practice with positive reinforcement" required>${App.escapeHtml(stepsVal)}</textarea>
                         </div>
 
                         <div style="margin-bottom:1rem;">
-                            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.25rem;">Common Pitfalls & Mistakes</label>
-                            <textarea id="author-pitfalls" class="form-control" rows="2" placeholder="- Forgetting to carry digits"></textarea>
+                            <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">⚠️ Common Mistakes to Watch Out For</label>
+                            <textarea id="author-pitfalls" class="form-control" rows="2" placeholder="- Confusing digits order (e.g. reading 41 as 14)&#10;- Forgetting regrouping">${App.escapeHtml(pitfallsVal)}</textarea>
                         </div>
 
                         <div style="margin-bottom:1.5rem;">
-                            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.25rem;">Assessment Checklist (1 item per line)</label>
-                            <textarea id="author-checklist" class="form-control" rows="3" placeholder="[] Child recalls place values&#10;[] Child solves 3 questions"></textarea>
+                            <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">✅ Assessment Checklist for Parents (1 criteria per line)</label>
+                            <textarea id="author-checklist" class="form-control" rows="3" placeholder="[x] Child can group objects in bundles of ten&#10;[x] Child writes the correct 2-digit number&#10;[x] Child explains their answer">${App.escapeHtml(checklistVal)}</textarea>
                         </div>
 
-                        <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
-                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('guide-modal-container').innerHTML=''">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Save Guide Draft</button>
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                            <div>
+                                ${isEdit && guideData.status !== 'published' ? `
+                                    <button type="button" class="btn btn-primary" style="background:#16a34a; border-color:#16a34a;" onclick="GuidesApp.publishGuide(${guideData.guide_id})">
+                                        🚀 Publish Immediately
+                                    </button>
+                                ` : ''}
+                            </div>
+                            <div style="display:flex; gap:0.5rem;">
+                                <button type="button" class="btn btn-secondary" onclick="document.getElementById('guide-modal-container').innerHTML=''">Cancel</button>
+                                <button type="submit" class="btn btn-primary">${submitLabel}</button>
+                            </div>
                         </div>
                     </form>
                 </div>
             </div>
         `;
+
+        if (selectedClassId) {
+            await this.updateAuthorSubjects(selectedClassId, guideData?.subject_id);
+        }
     },
 
-    async updateAuthorSubjects(classId) {
+    async updateAuthorSubjects(classId, selectedSubjectId = null) {
         const select = document.getElementById('author-subject');
         if (!select || !classId) return;
 
@@ -694,9 +809,26 @@ const GuidesApp = {
         try {
             const res = await API.get(`/api/curriculum/classes/${classId}/subjects`);
             const subjects = Array.isArray(res.data) ? res.data : (res.data?.subjects || []);
-            select.innerHTML = subjects.map(s => `<option value="${s.subject_id}">${s.subject_name}</option>`).join('');
+            select.innerHTML = subjects.map(s => `
+                <option value="${s.subject_id}" ${selectedSubjectId && selectedSubjectId == s.subject_id ? 'selected' : ''}>
+                    ${App.escapeHtml(s.subject_name)} (${s.subject_code})
+                </option>
+            `).join('');
+            if (subjects.length === 0) {
+                select.innerHTML = '<option value="">No subjects found for this class</option>';
+            }
         } catch (err) {
             select.innerHTML = '<option value="">Failed to load subjects</option>';
+        }
+    },
+
+    async openEditModal(guideId) {
+        try {
+            const res = await API.get(`/api/guides/${guideId}`);
+            const guide = res.data;
+            await this.openAuthoringModal(guide);
+        } catch (err) {
+            alert('Failed to load guide details: ' + (err.message || 'Unknown error'));
         }
     },
 
@@ -706,25 +838,82 @@ const GuidesApp = {
             class_id: document.getElementById('author-class').value,
             term_id: document.getElementById('author-term').value,
             subject_id: document.getElementById('author-subject').value,
-            title: document.getElementById('author-title').value,
+            title: document.getElementById('author-title').value.trim(),
             education_level_target: document.getElementById('author-level').value,
             expected_duration_minutes: document.getElementById('author-duration').value,
-            learning_objectives: document.getElementById('author-objectives').value,
-            materials_needed: document.getElementById('author-materials').value,
-            suggested_steps: document.getElementById('author-steps').value,
-            guide_body: document.getElementById('author-steps').value,
-            common_mistakes: document.getElementById('author-pitfalls').value,
-            assessment_checklist: document.getElementById('author-checklist').value
+            learning_objectives: document.getElementById('author-objectives').value.trim(),
+            materials_needed: document.getElementById('author-materials').value.trim(),
+            suggested_steps: document.getElementById('author-steps').value.trim(),
+            guide_body: document.getElementById('author-steps').value.trim(),
+            common_mistakes: document.getElementById('author-pitfalls').value.trim(),
+            assessment_checklist: document.getElementById('author-checklist').value.trim()
         };
 
         try {
             await API.post('/api/officer/guides', payload);
             alert('Parental guide draft saved successfully!');
-            document.getElementById('guide-modal-container').innerHTML = '';
-            await this.loadGuides();
-            this.renderView(document.getElementById('app-content'));
+            const container = document.getElementById('guide-modal-container');
+            if (container) container.innerHTML = '';
+            
+            // If on guides page, refresh, otherwise redirect
+            if (window.location.hash.startsWith('#officer-guides') || window.location.hash.startsWith('#parent-guides')) {
+                await this.loadGuides();
+                this.renderView(document.getElementById('app-content'));
+            } else {
+                window.location.hash = '#officer-guides';
+            }
         } catch (err) {
             alert('Failed to save guide: ' + (err.message || 'Unknown error'));
+        }
+    },
+
+    async submitEditGuide(e, guideId) {
+        e.preventDefault();
+        const payload = {
+            class_id: document.getElementById('author-class').value,
+            term_id: document.getElementById('author-term').value,
+            subject_id: document.getElementById('author-subject').value,
+            title: document.getElementById('author-title').value.trim(),
+            education_level_target: document.getElementById('author-level').value,
+            expected_duration_minutes: document.getElementById('author-duration').value,
+            learning_objectives: document.getElementById('author-objectives').value.trim(),
+            materials_needed: document.getElementById('author-materials').value.trim(),
+            suggested_steps: document.getElementById('author-steps').value.trim(),
+            guide_body: document.getElementById('author-steps').value.trim(),
+            common_mistakes: document.getElementById('author-pitfalls').value.trim(),
+            assessment_checklist: document.getElementById('author-checklist').value.trim(),
+            change_notes: 'Updated via officer portal'
+        };
+
+        try {
+            await API.put(`/api/officer/guides/${guideId}`, payload);
+            alert('Parental guide updated successfully!');
+            const container = document.getElementById('guide-modal-container');
+            if (container) container.innerHTML = '';
+            
+            await this.loadGuides();
+            const grid = document.getElementById('guides-grid-container');
+            if (grid) grid.innerHTML = this.renderGuidesGrid();
+            else this.renderView(document.getElementById('app-content'));
+        } catch (err) {
+            alert('Failed to update guide: ' + (err.message || 'Unknown error'));
+        }
+    },
+
+    async publishGuide(guideId) {
+        if (!confirm('Are you sure you want to publish this parental guide? It will become immediately accessible to all homeschooling parents and learners.')) return;
+        try {
+            await API.post(`/api/officer/guides/${guideId}/publish`, {});
+            alert('Parental guide published successfully!');
+            const container = document.getElementById('guide-modal-container');
+            if (container) container.innerHTML = '';
+            
+            await this.loadGuides();
+            const grid = document.getElementById('guides-grid-container');
+            if (grid) grid.innerHTML = this.renderGuidesGrid();
+            else this.renderView(document.getElementById('app-content'));
+        } catch (err) {
+            alert('Failed to publish guide: ' + (err.message || 'Unknown error'));
         }
     }
 };

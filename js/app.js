@@ -99,6 +99,9 @@ const App = {
                                 <a href="#officer-materials" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📁</span> Learning Materials
                                 </a>
+                                <a href="#officer-guides" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📖</span> Parental Guides Library
+                                </a>
                                 <a href="#officer-exams" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📄</span> Exam Sets & UNEB Grading
                                 </a>
@@ -162,6 +165,9 @@ const App = {
                                 <a href="#officer-materials" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📁</span> Learning Materials
                                 </a>
+                                <a href="#parent-guides" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📖</span> Parental Guides Library
+                                </a>
                                 <a href="#teacher-assessments" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>✅</span> Review & Grading
                                 </a>
@@ -178,6 +184,9 @@ const App = {
                                 </a>
                                 <a href="#officer-materials" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📁</span> Learning Materials
+                                </a>
+                                <a href="#officer-guides" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📖</span> Parental Guides & Authoring
                                 </a>
                                 <a href="#officer-exams" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📄</span> Exam Sets & PDF Releases
@@ -1004,9 +1013,17 @@ const App = {
                 <p style="color:var(--text-muted); margin-top:4px;">Uganda National Curriculum Development Center (NCDC / MoES) Oversight</p>
                 <div class="dashboard-grid">
                     <div class="card">
+                        <h3>Parental Pedagogical Guides <span>📖</span></h3>
+                        <p>Author, version, and publish step-by-step home teaching guides, pitfalls, and checklists for parents.</p>
+                        <div style="display:flex; gap:8px; margin-top:0.75rem; flex-wrap:wrap;">
+                            <a href="#officer-guides" class="btn btn-primary btn-sm">Author & Manage Guides</a>
+                            <button class="btn btn-secondary btn-sm" onclick="GuidesApp.openAuthoringModal()">+ New Guide</button>
+                        </div>
+                    </div>
+                    <div class="card">
                         <h3>Exam Sets & PDF Releases <span>📄</span></h3>
                         <p>Release official printable exam sets, upload marking guides, and oversee grading.</p>
-                        <a href="#officer-exams" class="btn btn-primary btn-sm">Manage Exam Sets</a>
+                        <a href="#officer-exams" class="btn btn-secondary btn-sm">Manage Exam Sets</a>
                     </div>
                     <div class="card">
                         <h3>Curriculum Management <span>📋</span></h3>
