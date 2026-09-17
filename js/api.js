@@ -415,7 +415,26 @@ const API = {
                 return { success: true, data: schedules || [], offline: true, fromCache: true };
             }
 
-            // 7. Assessments
+            // 7. Assessments & Quiz Results
+            const singleAttemptResultMatch = cleanUrl.match(/\/api\/attempts\/(\d+)\/result/);
+            if (singleAttemptResultMatch) {
+                const attemptId = Number(singleAttemptResultMatch[1]);
+                const allResults = await TMHIS_DB.getAssessmentResults();
+                const result = allResults.find(r => Number(r.attempt_id) === attemptId || Number(r.result_id) === attemptId) || null;
+                const answers = await TMHIS_DB.getAssessmentAnswers(attemptId);
+                if (result) {
+                    return {
+                        success: true,
+                        data: {
+                            result: result,
+                            answers: answers || []
+                        },
+                        offline: true,
+                        fromCache: true
+                    };
+                }
+            }
+
             const singleAssessMatch = cleanUrl.match(/\/api\/assessments\/(\d+)/);
             if (singleAssessMatch) {
                 const assessId = Number(singleAssessMatch[1]);
@@ -439,20 +458,109 @@ const API = {
             }
 
             if (cleanUrl === '/api/parent/assessments/results') {
-                return { success: true, data: [], offline: true, fromCache: true };
+                const learnerId = searchParams.get('learner_id');
+                const results = await TMHIS_DB.getAssessmentResults(learnerId ? Number(learnerId) : null);
+                return { success: true, data: results || [], offline: true, fromCache: true };
             }
 
-            // 8. Exams
+            // 8. Exams, Papers, Mark Entry & Report Cards
+            const reportCardMatch = cleanUrl.match(/\/api\/parent\/exams\/submissions\/(\d+)\/report-card/);
+            if (reportCardMatch) {
+                const subId = Number(reportCardMatch[1]);
+                const sub = await TMHIS_DB.getExamSubmission(subId);
+                const marks = await TMHIS_DB.getExamMarks(subId);
+                const learner = sub ? await TMHIS_DB.getLearner(sub.learner_id) : null;
+                const exam = sub ? await TMHIS_DB.getExamSet(sub.exam_set_id) : null;
+
+                const scaleLegend = [
+                    { grade: 'D1', points: 1, range: '90 - 100%', label: 'Distinction 1 (Outstanding)' },
+                    { grade: 'D2', points: 2, range: '80 - 89%',  label: 'Distinction 2 (Excellent)' },
+                    { grade: 'C3', points: 3, range: '70 - 79%',  label: 'Credit 3 (Very Good)' },
+                    { grade: 'C4', points: 4, range: '60 - 69%',  label: 'Credit 4 (Good)' },
+                    { grade: 'C5', points: 5, range: '55 - 59%',  label: 'Credit 5 (Above Average)' },
+                    { grade: 'C6', points: 6, range: '50 - 54%',  label: 'Credit 6 (Credit Pass)' },
+                    { grade: 'P7', points: 7, range: '45 - 49%',  label: 'Pass 7 (Pass / Needs Help)' },
+                    { grade: 'P8', points: 8, range: '40 - 44%',  label: 'Pass 8 (Minimum Pass)' },
+                    { grade: 'F9', points: 9, range: '0 - 39%',   label: 'Fail 9 (Ungraded / Fail)' }
+                ];
+
+                return {
+                    success: true,
+                    data: {
+                        report_card: {
+                            ...(sub || {}),
+                            learner_name: learner?.full_name || 'Candidate',
+                            learner_avatar: learner?.avatar_url || '',
+                            class_name: learner?.class_name || 'Primary',
+                            class_code: learner?.class_code || 'P1',
+                            exam_set_title: exam?.title || 'Examination Set',
+                            academic_year: exam?.academic_year || '2026',
+                            exam_type: exam?.exam_type || 'mid_term'
+                        },
+                        subject_marks: marks || [],
+                        grading_legend: scaleLegend,
+                        institution: {
+                            name: "The Master's Home International School",
+                            motto: 'Nurturing Champions in Christ and Academic Excellence',
+                            address: 'Kampala, Uganda',
+                            website: 'https://tmhis.strongsystemsltd.com'
+                        }
+                    },
+                    offline: true,
+                    fromCache: true
+                };
+            }
+
             const singleExamMatch = cleanUrl.match(/\/api\/exams\/sets\/(\d+)/);
             if (singleExamMatch) {
                 const setId = Number(singleExamMatch[1]);
+                const learnerId = searchParams.get('learner_id');
                 const exam = await TMHIS_DB.getExamSet(setId);
-                return { success: true, data: exam || null, offline: true, fromCache: true };
+                const papers = await TMHIS_DB.getExamPapers(setId);
+                const subs = await TMHIS_DB.getExamSubmissions(learnerId ? Number(learnerId) : null, setId);
+                const sub = subs && subs.length > 0 ? subs[0] : null;
+                const marks = sub ? await TMHIS_DB.getExamMarks(sub.submission_id) : [];
+
+                return {
+                    success: true,
+                    data: {
+                        exam_set: exam,
+                        set: exam,
+                        papers: papers || [],
+                        submission: sub,
+                        marks: marks || []
+                    },
+                    offline: true,
+                    fromCache: true
+                };
             }
 
             if (cleanUrl === '/api/exams/sets') {
-                const exams = await TMHIS_DB.getExams();
-                return { success: true, data: exams || [], offline: true, fromCache: true };
+                const learnerId = searchParams.get('learner_id');
+                let exams = await TMHIS_DB.getExams();
+                const papers = await TMHIS_DB.getExamPapers();
+                const submissions = await TMHIS_DB.getExamSubmissions(learnerId ? Number(learnerId) : null);
+
+                exams = exams.map(e => {
+                    const setPapers = papers.filter(p => Number(p.exam_set_id) === Number(e.exam_set_id));
+                    const sub = submissions.find(s => Number(s.exam_set_id) === Number(e.exam_set_id));
+                    return {
+                        ...e,
+                        papers_count: setPapers.length,
+                        is_graded: Boolean(sub),
+                        submission: sub || null,
+                        total_aggregate: sub?.total_aggregate || null,
+                        division: sub?.division || null
+                    };
+                });
+
+                return { success: true, data: { sets: exams, data: exams }, offline: true, fromCache: true };
+            }
+
+            if (cleanUrl === '/api/parent/exams/results') {
+                const learnerId = searchParams.get('learner_id');
+                const subs = await TMHIS_DB.getExamSubmissions(learnerId ? Number(learnerId) : null);
+                return { success: true, data: subs || [], offline: true, fromCache: true };
             }
 
             // 9. Sync Status & Diagnostics
@@ -461,9 +569,16 @@ const API = {
                 return { success: true, data: stats, offline: true, fromCache: true };
             }
 
-            // 10. Digital Materials
+            // 10. Digital Materials & Resources
             if (cleanUrl === '/api/materials') {
-                return { success: true, data: { materials: [], total: 0 }, offline: true, fromCache: true };
+                const materials = await TMHIS_DB.getMaterials();
+                return { success: true, data: { materials: materials || [], total: (materials || []).length }, offline: true, fromCache: true };
+            }
+
+            // 11. Grading Schemes
+            if (cleanUrl === '/api/grading/schemes' || cleanUrl === '/api/grading/uneb') {
+                const schemes = await TMHIS_DB.getGradingSchemes();
+                return { success: true, data: schemes || [], offline: true, fromCache: true };
             }
 
         } catch (e) {

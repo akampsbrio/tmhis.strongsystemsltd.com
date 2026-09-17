@@ -700,79 +700,230 @@ class SyncService
         $db = Database::getConnection();
         $examSetId = (int)($payload['exam_set_id'] ?? 0);
         $learnerId = $learnerId ?: (int)($payload['learner_id'] ?? 0);
-        $paperMarks = $payload['paper_marks'] ?? [];
+        $marksInput = $payload['marks'] ?? $payload['paper_marks'] ?? [];
+        $sittingDate = !empty($payload['sitting_date']) ? $payload['sitting_date'] : date('Y-m-d');
+        $parentRemarks = $payload['parent_remarks'] ?? null;
+        $teacherRemarks = $payload['teacher_remarks'] ?? null;
 
         if (!$examSetId || !$learnerId) {
-            throw new Exception("Exam Set ID and Learner ID are required.");
+            throw new Exception("Exam Set ID and Learner ID are required for exam submission.");
         }
 
         self::verifyLearnerAccess($userId, $learnerId);
 
-        // Check if submission already exists
-        $stmt = $db->prepare('SELECT * FROM exam_submissions WHERE exam_set_id = :set_id AND learner_id = :lid LIMIT 1');
-        $stmt->execute([':set_id' => $examSetId, ':lid' => $learnerId]);
-        $sub = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$sub) {
-            $stmt = $db->prepare('
-                INSERT INTO exam_submissions (
-                    exam_set_id,
-                    learner_id,
-                    submitted_by_user_id,
-                    status,
-                    submitted_at,
-                    created_at
-                ) VALUES (
-                    :set_id,
-                    :lid,
-                    :uid,
-                    "submitted",
-                    NOW(),
-                    NOW()
-                )
-            ');
-            $stmt->execute([
-                ':set_id' => $examSetId,
-                ':lid' => $learnerId,
-                ':uid' => $userId
-            ]);
-            $submissionId = (int)$db->lastInsertId();
-        } else {
-            $submissionId = (int)$sub['submission_id'];
+        // Fetch parent ID for user
+        $pStmt = $db->prepare('SELECT parent_id FROM parents WHERE user_id = :uid LIMIT 1');
+        $pStmt->execute([':uid' => $userId]);
+        $parent = $pStmt->fetch(PDO::FETCH_ASSOC);
+        $parentId = $parent ? (int)$parent['parent_id'] : 0;
+        if (!$parentId) {
+            $pStmt2 = $db->prepare('SELECT parent_id FROM learners WHERE learner_id = :lid LIMIT 1');
+            $pStmt2->execute([':lid' => $learnerId]);
+            $lRow = $pStmt2->fetch(PDO::FETCH_ASSOC);
+            $parentId = $lRow ? (int)$lRow['parent_id'] : 1;
         }
 
-        // Insert or update marks
-        foreach ($paperMarks as $pm) {
-            $paperId = (int)($pm['paper_id'] ?? 0);
-            $marks = (float)($pm['marks_obtained'] ?? $pm['raw_score'] ?? 0);
-            if ($paperId > 0) {
-                $stmt = $db->prepare('
-                    INSERT INTO exam_marks (
-                        submission_id,
-                        paper_id,
-                        marks_obtained,
-                        created_at
-                    ) VALUES (
-                        :sub_id,
-                        :paper_id,
-                        :marks,
-                        NOW()
-                    )
-                    ON DUPLICATE KEY UPDATE 
-                        marks_obtained = VALUES(marks_obtained)
-                ');
-                $stmt->execute([
-                    ':sub_id' => $submissionId,
-                    ':paper_id' => $paperId,
-                    ':marks' => $marks
-                ]);
+        // Fetch exam papers metadata for grading
+        $epStmt = $db->prepare('
+            SELECT ep.exam_paper_id, ep.subject_id, ep.paper_code, ep.title, ep.total_marks, ep.is_aggregate_contributor,
+                   s.subject_name, s.subject_code
+            FROM exam_papers ep
+            JOIN subjects s ON ep.subject_id = s.subject_id
+            WHERE ep.exam_set_id = :set_id
+        ');
+        $epStmt->execute([':set_id' => $examSetId]);
+        $papers = $epStmt->fetchAll(PDO::FETCH_ASSOC);
+        $paperLookup = [];
+        foreach ($papers as $p) {
+            $paperLookup[(int)$p['exam_paper_id']] = $p;
+        }
+
+        $evaluatedMarks = [];
+        foreach ($marksInput as $m) {
+            $paperId = (int)($m['exam_paper_id'] ?? $m['paper_id'] ?? 0);
+            if (!isset($paperLookup[$paperId])) continue;
+
+            $pMeta = $paperLookup[$paperId];
+            $maxMarks = (float)($pMeta['total_marks'] > 0 ? $pMeta['total_marks'] : 100.0);
+            $isAbsent = !empty($m['is_absent']);
+            $score = $isAbsent ? 0.0 : min($maxMarks, max(0.0, (float)($m['raw_score'] ?? $m['marks_obtained'] ?? 0.0)));
+            $pct = $maxMarks > 0 ? round(($score / $maxMarks) * 100, 2) : 0.0;
+            $isContributor = isset($pMeta['is_aggregate_contributor']) ? (int)$pMeta['is_aggregate_contributor'] : 1;
+
+            // UNEB Grade determination
+            if ($isAbsent) {
+                $gradePoint = 9;
+                $gradeLabel = 'F9';
+            } else if ($pct >= 90.0) {
+                $gradePoint = 1; $gradeLabel = 'D1';
+            } else if ($pct >= 80.0) {
+                $gradePoint = 2; $gradeLabel = 'D2';
+            } else if ($pct >= 70.0) {
+                $gradePoint = 3; $gradeLabel = 'C3';
+            } else if ($pct >= 60.0) {
+                $gradePoint = 4; $gradeLabel = 'C4';
+            } else if ($pct >= 55.0) {
+                $gradePoint = 5; $gradeLabel = 'C5';
+            } else if ($pct >= 50.0) {
+                $gradePoint = 6; $gradeLabel = 'C6';
+            } else if ($pct >= 45.0) {
+                $gradePoint = 7; $gradeLabel = 'P7';
+            } else if ($pct >= 40.0) {
+                $gradePoint = 8; $gradeLabel = 'P8';
+            } else {
+                $gradePoint = 9; $gradeLabel = 'F9';
             }
+
+            $evaluatedMarks[] = [
+                'exam_paper_id' => $paperId,
+                'subject_id' => $pMeta['subject_id'],
+                'raw_score' => $score,
+                'max_marks' => $maxMarks,
+                'percentage' => $pct,
+                'grade_point' => $gradePoint,
+                'grade_label' => $gradeLabel,
+                'is_absent' => $isAbsent ? 1 : 0,
+                'is_aggregate_contributor' => $isContributor,
+                'remarks' => trim((string)($m['remarks'] ?? ''))
+            ];
+        }
+
+        // Calculate division
+        $coreContributors = array_filter($evaluatedMarks, fn($m) => !empty($m['is_aggregate_contributor']));
+        $aggMarks = !empty($coreContributors) ? $coreContributors : $evaluatedMarks;
+
+        $totalAgg = 0;
+        $totalRaw = 0.0;
+        $totalPossible = 0.0;
+        $hasF9 = false;
+
+        foreach ($aggMarks as $m) {
+            $totalAgg += $m['grade_point'];
+            $totalRaw += $m['raw_score'];
+            $totalPossible += $m['max_marks'];
+            if ($m['grade_point'] === 9) {
+                $hasF9 = true;
+            }
+        }
+
+        $avgPct = $totalPossible > 0 ? round(($totalRaw / $totalPossible) * 100, 2) : 0.0;
+
+        if ($totalAgg >= 4 && $totalAgg <= 12) {
+            $division = 'I';
+        } else if ($totalAgg >= 13 && $totalAgg <= 24) {
+            $division = 'II';
+        } else if ($totalAgg >= 25 && $totalAgg <= 29) {
+            $division = 'III';
+        } else if ($totalAgg >= 30 && $totalAgg <= 34) {
+            $division = 'IV';
+        } else {
+            $division = 'U';
+        }
+
+        // F9 demotion rule: candidate with F9 in any core subject cannot be Division I
+        if ($division === 'I' && $hasF9) {
+            $division = 'II';
+            $demotionNotice = 'Demoted from Division I to Division II due to F9 grade in a core subject';
+            $teacherRemarks = ($teacherRemarks ? $teacherRemarks . ' | ' : '') . '[UNEB Grading Notice: ' . $demotionNotice . ']';
+        }
+
+        // Check if submission already exists
+        $stmt = $db->prepare('SELECT submission_id FROM exam_submissions WHERE exam_set_id = :set_id AND learner_id = :lid LIMIT 1');
+        $stmt->execute([':set_id' => $examSetId, ':lid' => $learnerId]);
+        $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($existing) {
+            $submissionId = (int)$existing['submission_id'];
+            $upStmt = $db->prepare('
+                UPDATE exam_submissions SET
+                    sitting_date = :s_date,
+                    total_raw_marks = :raw,
+                    total_possible_marks = :poss,
+                    average_percentage = :pct,
+                    total_aggregate = :agg,
+                    division = :div,
+                    status = "submitted",
+                    parent_remarks = :prem,
+                    teacher_remarks = :trem,
+                    updated_at = NOW()
+                WHERE submission_id = :sub_id
+            ');
+            $upStmt->execute([
+                ':s_date' => $sittingDate,
+                ':raw' => $totalRaw,
+                ':poss' => $totalPossible,
+                ':pct' => $avgPct,
+                ':agg' => $totalAgg,
+                ':div' => $division,
+                ':prem' => $parentRemarks,
+                ':trem' => $teacherRemarks,
+                ':sub_id' => $submissionId
+            ]);
+
+            $db->exec("DELETE FROM exam_marks WHERE submission_id = {$submissionId}");
+        } else {
+            $inStmt = $db->prepare('
+                INSERT INTO exam_submissions (
+                    exam_set_id, learner_id, parent_id, sitting_date,
+                    total_raw_marks, total_possible_marks, average_percentage,
+                    total_aggregate, division, status, parent_remarks, teacher_remarks,
+                    created_at, updated_at
+                ) VALUES (
+                    :set_id, :lid, :pid, :s_date,
+                    :raw, :poss, :pct,
+                    :agg, :div, "submitted", :prem, :trem,
+                    NOW(), NOW()
+                )
+            ');
+            $inStmt->execute([
+                ':set_id' => $examSetId,
+                ':lid' => $learnerId,
+                ':pid' => $parentId,
+                ':s_date' => $sittingDate,
+                ':raw' => $totalRaw,
+                ':poss' => $totalPossible,
+                ':pct' => $avgPct,
+                ':agg' => $totalAgg,
+                ':div' => $division,
+                ':prem' => $parentRemarks,
+                ':trem' => $teacherRemarks
+            ]);
+            $submissionId = (int)$db->lastInsertId();
+        }
+
+        // Insert evaluated marks
+        $mIn = $db->prepare('
+            INSERT INTO exam_marks (
+                submission_id, exam_paper_id, subject_id, raw_score, max_marks,
+                percentage, grade_point, grade_label, is_absent, remarks, entered_by, created_at
+            ) VALUES (
+                :sub_id, :paper_id, :subj_id, :raw, :max_m,
+                :pct, :gp, :gl, :absent, :rem, :uid, NOW()
+            )
+        ');
+        foreach ($evaluatedMarks as $em) {
+            $mIn->execute([
+                ':sub_id' => $submissionId,
+                ':paper_id' => $em['exam_paper_id'],
+                ':subj_id' => $em['subject_id'],
+                ':raw' => $em['raw_score'],
+                ':max_m' => $em['max_marks'],
+                ':pct' => $em['percentage'],
+                ':gp' => $em['grade_point'],
+                ':gl' => $em['grade_label'],
+                ':absent' => $em['is_absent'],
+                ':rem' => $em['remarks'],
+                ':uid' => $userId
+            ]);
         }
 
         return [
             'submission_id' => $submissionId,
             'exam_set_id' => $examSetId,
-            'learner_id' => $learnerId
+            'learner_id' => $learnerId,
+            'total_aggregate' => $totalAgg,
+            'division' => $division,
+            'average_percentage' => $avgPct
         ];
     }
 
@@ -1139,10 +1290,22 @@ class SyncService
         $assessments = [];
         $questions = [];
         $options = [];
-        if (!empty($lessonIds)) {
-            $inClause = implode(',', array_fill(0, count($lessonIds), '?'));
-            $stmt = $db->prepare("SELECT * FROM assessments WHERE lesson_id IN ({$inClause}) AND status = 'published'");
-            $stmt->execute($lessonIds);
+        if (!empty($lessonIds) || !empty($subjectIds)) {
+            $conditions = [];
+            $params = [];
+            if (!empty($lessonIds)) {
+                $lesInClause = implode(',', array_fill(0, count($lessonIds), '?'));
+                $conditions[] = "lesson_id IN ({$lesInClause})";
+                $params = array_merge($params, $lessonIds);
+            }
+            if (!empty($subjectIds)) {
+                $subInClause = implode(',', array_fill(0, count($subjectIds), '?'));
+                $conditions[] = "subject_id IN ({$subInClause})";
+                $params = array_merge($params, $subjectIds);
+            }
+            $whereClause = implode(' OR ', $conditions);
+            $stmt = $db->prepare("SELECT * FROM assessments WHERE ({$whereClause}) AND status = 'published'");
+            $stmt->execute($params);
             $assessments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             $assessmentIds = array_column($assessments, 'assessment_id');
@@ -1217,31 +1380,181 @@ class SyncService
             $schedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
+        // 8. Grading Schemes & Rules
+        $gradingSchemes = $db->query('SELECT * FROM grading_schemes')->fetchAll(PDO::FETCH_ASSOC);
+
+        // 9. Exams & Exam Papers
+        $exams = [];
+        $papers = [];
+        if ($classId) {
+            $stmt = $db->prepare("SELECT * FROM exam_sets WHERE class_id = :cid AND status = 'published' ORDER BY created_at DESC");
+            $stmt->execute([':cid' => $classId]);
+            $exams = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } else if (!empty($learners)) {
+            $cIds = array_unique(array_filter(array_column($learners, 'class_id')));
+            if (!empty($cIds)) {
+                $cInClause = implode(',', array_fill(0, count($cIds), '?'));
+                $stmt = $db->prepare("SELECT * FROM exam_sets WHERE class_id IN ({$cInClause}) AND status = 'published' ORDER BY created_at DESC");
+                $stmt->execute(array_values($cIds));
+                $exams = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+        } else {
+            $exams = $db->query("SELECT * FROM exam_sets WHERE status = 'published' ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        $examIds = array_column($exams, 'exam_set_id');
+        if (!empty($examIds)) {
+            $eInClause = implode(',', array_fill(0, count($examIds), '?'));
+            $stmt = $db->prepare("
+                SELECT ep.*, s.subject_name, s.subject_code 
+                FROM exam_papers ep 
+                JOIN subjects s ON ep.subject_id = s.subject_id 
+                WHERE ep.exam_set_id IN ({$eInClause}) 
+                ORDER BY ep.paper_order ASC
+            ");
+            $stmt->execute($examIds);
+            $papers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        // 10. Exam Submissions & Marks for Learners
+        $examSubmissions = [];
+        $examMarks = [];
+        $learnerIds = !empty($learners) ? array_column($learners, 'learner_id') : ($learnerId ? [$learnerId] : []);
+        if (!empty($learnerIds)) {
+            $lInClause = implode(',', array_fill(0, count($learnerIds), '?'));
+            $stmt = $db->prepare("
+                SELECT es.*, e.title AS exam_set_title, e.academic_year, e.exam_type 
+                FROM exam_submissions es 
+                JOIN exam_sets e ON es.exam_set_id = e.exam_set_id 
+                WHERE es.learner_id IN ({$lInClause}) 
+                ORDER BY es.sitting_date DESC
+            ");
+            $stmt->execute($learnerIds);
+            $examSubmissions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $subIds = array_column($examSubmissions, 'submission_id');
+            if (!empty($subIds)) {
+                $sInClause = implode(',', array_fill(0, count($subIds), '?'));
+                $stmt = $db->prepare("
+                    SELECT em.*, ep.paper_code, ep.title as paper_title, s.subject_name, s.subject_code 
+                    FROM exam_marks em 
+                    JOIN exam_papers ep ON em.exam_paper_id = ep.exam_paper_id 
+                    JOIN subjects s ON em.subject_id = s.subject_id 
+                    WHERE em.submission_id IN ({$sInClause}) 
+                    ORDER BY ep.paper_order ASC
+                ");
+                $stmt->execute($subIds);
+                $examMarks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+        }
+
+        // 11. Learner Assessment Results & Answers (Recent History)
+        $assessmentResults = [];
+        $assessmentAnswers = [];
+        if (!empty($learnerIds)) {
+            $lInClause = implode(',', array_fill(0, count($learnerIds), '?'));
+            $stmt = $db->prepare("
+                SELECT ar.*, a.title AS assessment_title, a.passing_marks, a.total_marks,
+                       l.full_name AS learner_name, 
+                       COALESCE(sub.subject_name, sub_direct.subject_name) AS subject_name,
+                       COALESCE(sub.class_id, sub_direct.class_id, a.class_id) AS class_id,
+                       COALESCE(c.class_code, c_direct.class_code) AS class_code
+                FROM assessment_results ar
+                JOIN assessment_attempts att ON ar.attempt_id = att.attempt_id
+                JOIN assessments a ON att.assessment_id = a.assessment_id
+                LEFT JOIN lessons les ON a.lesson_id = les.lesson_id
+                LEFT JOIN subjects sub ON les.subject_id = sub.subject_id
+                LEFT JOIN subjects sub_direct ON a.subject_id = sub_direct.subject_id
+                LEFT JOIN classes c ON sub.class_id = c.class_id
+                LEFT JOIN classes c_direct ON a.class_id = c_direct.class_id
+                JOIN learners l ON ar.learner_id = l.learner_id
+                WHERE ar.learner_id IN ({$lInClause})
+                ORDER BY ar.created_at DESC
+                LIMIT 150
+            ");
+            $stmt->execute($learnerIds);
+            $assessmentResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $attemptIds = array_unique(array_filter(array_column($assessmentResults, 'attempt_id')));
+            if (!empty($attemptIds)) {
+                $attInClause = implode(',', array_fill(0, count($attemptIds), '?'));
+                $stmt = $db->prepare("
+                    SELECT ans.*, q.question_text, q.question_type, q.marks AS max_marks 
+                    FROM assessment_answers ans 
+                    JOIN assessment_questions q ON ans.question_id = q.question_id 
+                    WHERE ans.attempt_id IN ({$attInClause})
+                ");
+                $stmt->execute(array_values($attemptIds));
+                $assessmentAnswers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+        }
+
+        // 12. Digital Lesson Materials
+        $materials = [];
+        if (!empty($lessonIds)) {
+            $lesInClause = implode(',', array_fill(0, count($lessonIds), '?'));
+            $stmt = $db->prepare("SELECT * FROM learning_materials WHERE lesson_id IN ({$lesInClause}) AND status = 'approved'");
+            $stmt->execute($lessonIds);
+            $materials = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        // 13. Learner Subjects
+        $learnerSubjects = [];
+        if (!empty($learnerIds)) {
+            $lInClause = implode(',', array_fill(0, count($learnerIds), '?'));
+            $stmt = $db->prepare("
+                SELECT ls.*, s.subject_name, s.subject_code, s.class_id 
+                FROM learner_subjects ls 
+                JOIN subjects s ON ls.subject_id = s.subject_id 
+                WHERE ls.learner_id IN ({$lInClause}) AND ls.status = 'active'
+            ");
+            $stmt->execute($learnerIds);
+            $learnerSubjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
         return [
-            'package_version' => '1.0.0',
+            'package_version' => '2.0.0',
             'generated_at' => date('c'),
             'class_id' => $classId,
             'learner_id' => $learnerId,
             'metadata' => [
                 'classes' => $classes,
-                'terms' => $terms
+                'terms' => $terms,
+                'grading_schemes' => $gradingSchemes
             ],
             'learners' => $learners,
+            'learner_subjects' => $learnerSubjects,
             'subjects' => $subjects,
             'lessons' => $lessons,
             'guides' => $guides,
+            'materials' => $materials,
             'assessments' => $assessments,
             'questions' => $questions,
             'options' => $options,
+            'assessment_results' => $assessmentResults,
+            'assessment_answers' => $assessmentAnswers,
             'schedules' => $schedules,
+            'exams' => $exams,
+            'exam_papers' => $papers,
+            'exam_submissions' => $examSubmissions,
+            'exam_marks' => $examMarks,
+            'grading_schemes' => $gradingSchemes,
             'counts' => [
                 'learners' => count($learners),
                 'subjects' => count($subjects),
                 'lessons' => count($lessons),
                 'guides' => count($guides),
+                'materials' => count($materials),
                 'assessments' => count($assessments),
                 'questions' => count($questions),
-                'schedules' => count($schedules)
+                'options' => count($options),
+                'assessment_results' => count($assessmentResults),
+                'schedules' => count($schedules),
+                'exams' => count($exams),
+                'exam_papers' => count($papers),
+                'exam_submissions' => count($examSubmissions),
+                'exam_marks' => count($examMarks),
+                'grading_schemes' => count($gradingSchemes)
             ]
         ];
     }

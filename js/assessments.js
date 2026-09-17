@@ -1253,10 +1253,14 @@ const AssessmentsApp = {
         const feedback = document.getElementById('grading-feedback').value;
 
         try {
-            await API.post(`/api/results/${resultId}/manual-score`, {
-                answers: gradedAnswers,
-                feedback: feedback
-            });
+            if (typeof TMHIS_Sync !== 'undefined' && TMHIS_Sync.submitManualGrade) {
+                await TMHIS_Sync.submitManualGrade(resultId, gradedAnswers, feedback);
+            } else {
+                await API.post(`/api/results/${resultId}/manual-score`, {
+                    answers: gradedAnswers,
+                    feedback: feedback
+                });
+            }
 
             document.getElementById('grading-modal-backdrop')?.remove();
             alert('Grades and feedback saved successfully.');

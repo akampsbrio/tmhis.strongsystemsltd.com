@@ -840,14 +840,19 @@ const ExamsApp = {
         });
 
         try {
-            const payload = {
-                learner_id: this.selectedLearnerId,
-                sitting_date: sittingDate,
-                parent_remarks: parentRemarks,
-                marks: marks
-            };
+            let res;
+            if (typeof TMHIS_Sync !== 'undefined' && TMHIS_Sync.submitExamMarks) {
+                res = await TMHIS_Sync.submitExamMarks(examSetId, this.selectedLearnerId, marks, sittingDate, parentRemarks);
+            } else {
+                const payload = {
+                    learner_id: this.selectedLearnerId,
+                    sitting_date: sittingDate,
+                    parent_remarks: parentRemarks,
+                    marks: marks
+                };
+                res = await API.post(`/api/parent/exams/sets/${examSetId}/marks`, payload);
+            }
 
-            const res = await API.post(`/api/parent/exams/sets/${examSetId}/marks`, payload);
             App.showToast('success', res.message || 'Marks saved and UNEB Division computed successfully!');
             App.hideModal();
 
@@ -856,13 +861,13 @@ const ExamsApp = {
             this.renderCatalogView(document.getElementById('app-content'));
 
             // If submission id returned, prompt to view report card
-            if (res.data?.submission_id) {
+            if (res?.data?.submission_id) {
                 this.openReportCardView(res.data.submission_id);
             }
         } catch (err) {
             btn.disabled = false;
             btn.innerHTML = '<span>💾</span> Save Marks & Issue Division Slip';
-            alert('Failed to save exam marks: ' + (err.message || 'Server error'));
+            alert('Failed to save exam marks: ' + (err.message || 'Error occurred'));
         }
     },
 

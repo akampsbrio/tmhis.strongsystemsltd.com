@@ -378,6 +378,212 @@ const TMHIS_Sync = {
         }
     },
 
+    // Exam Marks Submission & Offline UNEB Auto-Grading Engine
+    async submitExamMarks(examSetId, learnerId, marks, sittingDate = null, parentRemarks = '') {
+        const txUuid = TMHIS_DB.generateUUID();
+        const dateStr = sittingDate || new Date().toISOString().split('T')[0];
+
+        // Evaluate marks with UNEB 9-point scale locally
+        const papers = await TMHIS_DB.getExamPapers(examSetId);
+        const paperLookup = {};
+        papers.forEach(p => { paperLookup[Number(p.exam_paper_id)] = p; });
+
+        let totalAgg = 0;
+        let totalRaw = 0;
+        let totalPossible = 0;
+        let hasF9 = false;
+
+        const evaluatedMarks = marks.map(m => {
+            const paperId = Number(m.exam_paper_id || m.paper_id);
+            const pMeta = paperLookup[paperId] || {};
+            const maxMarks = Number(pMeta.total_marks) > 0 ? Number(pMeta.total_marks) : 100;
+            const isAbsent = Boolean(m.is_absent);
+            const score = isAbsent ? 0 : Math.min(maxMarks, Math.max(0, Number(m.raw_score || 0)));
+            const pct = maxMarks > 0 ? Math.round((score / maxMarks) * 100 * 100) / 100 : 0;
+            const isContributor = pMeta.is_aggregate_contributor !== undefined ? Number(pMeta.is_aggregate_contributor) : 1;
+
+            let gp = 9;
+            let gl = 'F9';
+            if (!isAbsent) {
+                if (pct >= 90) { gp = 1; gl = 'D1'; }
+                else if (pct >= 80) { gp = 2; gl = 'D2'; }
+                else if (pct >= 70) { gp = 3; gl = 'C3'; }
+                else if (pct >= 60) { gp = 4; gl = 'C4'; }
+                else if (pct >= 55) { gp = 5; gl = 'C5'; }
+                else if (pct >= 50) { gp = 6; gl = 'C6'; }
+                else if (pct >= 45) { gp = 7; gl = 'P7'; }
+                else if (pct >= 40) { gp = 8; gl = 'P8'; }
+                else { gp = 9; gl = 'F9'; }
+            }
+
+            if (isContributor) {
+                totalAgg += gp;
+                totalRaw += score;
+                totalPossible += maxMarks;
+                if (gp === 9) hasF9 = true;
+            }
+
+            return {
+                exam_paper_id: paperId,
+                paper_code: pMeta.paper_code || '',
+                paper_title: pMeta.title || '',
+                subject_id: pMeta.subject_id,
+                raw_score: score,
+                max_marks: maxMarks,
+                percentage: pct,
+                grade_point: gp,
+                grade_label: gl,
+                is_absent: isAbsent ? 1 : 0,
+                is_aggregate_contributor: isContributor,
+                remarks: m.remarks || ''
+            };
+        });
+
+        const avgPct = totalPossible > 0 ? Math.round((totalRaw / totalPossible) * 100 * 100) / 100 : 0;
+        let division = 'U';
+        if (totalAgg >= 4 && totalAgg <= 12) division = 'I';
+        else if (totalAgg >= 13 && totalAgg <= 24) division = 'II';
+        else if (totalAgg >= 25 && totalAgg <= 29) division = 'III';
+        else if (totalAgg >= 30 && totalAgg <= 34) division = 'IV';
+        else division = 'U';
+
+        let demotionReason = null;
+        if (division === 'I' && hasF9) {
+            division = 'II';
+            demotionReason = 'Demoted from Division I to Division II due to F9 grade in a core aggregate subject';
+        }
+
+        const payload = {
+            client_transaction_uuid: txUuid,
+            exam_set_id: examSetId,
+            learner_id: learnerId,
+            sitting_date: dateStr,
+            parent_remarks: parentRemarks,
+            teacher_remarks: demotionReason ? `[UNEB Grading Notice: ${demotionReason}]` : null,
+            marks: marks,
+            total_aggregate: totalAgg,
+            division: division,
+            average_percentage: avgPct,
+            total_raw_marks: totalRaw,
+            total_possible_marks: totalPossible
+        };
+
+        const localSubId = Date.now();
+        const localSubmission = {
+            submission_id: localSubId,
+            exam_set_id: examSetId,
+            learner_id: learnerId,
+            sitting_date: dateStr,
+            total_raw_marks: totalRaw,
+            total_possible_marks: totalPossible,
+            average_percentage: avgPct,
+            total_aggregate: totalAgg,
+            division: division,
+            parent_remarks: parentRemarks,
+            teacher_remarks: payload.teacher_remarks,
+            status: 'submitted',
+            is_offline_draft: !this.isOnlineState,
+            created_at: new Date().toISOString()
+        };
+
+        if (!this.isOnlineState) {
+            console.log('[TMHIS Sync] Device is offline. Evaluating and enqueuing exam submission...');
+            await TMHIS_DB.saveExamSubmissions([localSubmission]);
+            const marksWithSub = evaluatedMarks.map(em => ({ ...em, submission_id: localSubId }));
+            await TMHIS_DB.saveExamMarks(marksWithSub);
+            await TMHIS_DB.enqueueSyncItem('exam_submission', 'submit', payload, learnerId);
+            this.updateOnlineBadge();
+
+            return {
+                success: true,
+                offline: true,
+                queued: true,
+                data: {
+                    submission_id: localSubId,
+                    total_aggregate: totalAgg,
+                    division: division,
+                    average_percentage: avgPct,
+                    total_raw_marks: totalRaw,
+                    total_possible_marks: totalPossible,
+                    is_demoted: Boolean(demotionReason),
+                    demotion_reason: demotionReason
+                },
+                message: `Candidate marks evaluated offline! Division ${division} computed (Aggregate ${totalAgg}). Slip available immediately.`
+            };
+        }
+
+        try {
+            const res = await API.post(`/api/parent/exams/sets/${examSetId}/marks`, payload);
+            if (res && res.success && res.data) {
+                const subId = res.data.submission_id || localSubId;
+                await TMHIS_DB.saveExamSubmissions([{ ...localSubmission, submission_id: subId, is_offline_draft: false }]);
+                const marksWithSub = evaluatedMarks.map(em => ({ ...em, submission_id: subId }));
+                await TMHIS_DB.saveExamMarks(marksWithSub);
+            }
+            return res;
+        } catch (err) {
+            console.warn('[TMHIS Sync] Online exam submission failed, saving offline fallback:', err);
+            await TMHIS_DB.saveExamSubmissions([localSubmission]);
+            const marksWithSub = evaluatedMarks.map(em => ({ ...em, submission_id: localSubId }));
+            await TMHIS_DB.saveExamMarks(marksWithSub);
+            await TMHIS_DB.enqueueSyncItem('exam_submission', 'submit', payload, learnerId);
+            this.updateOnlineBadge();
+
+            return {
+                success: true,
+                offline: true,
+                queued: true,
+                data: {
+                    submission_id: localSubId,
+                    total_aggregate: totalAgg,
+                    division: division,
+                    average_percentage: avgPct,
+                    total_raw_marks: totalRaw,
+                    total_possible_marks: totalPossible,
+                    is_demoted: Boolean(demotionReason),
+                    demotion_reason: demotionReason
+                },
+                message: `Connection lost. Candidate marks computed locally (Division ${division}, Aggregate ${totalAgg}) and queued for sync.`
+            };
+        }
+    },
+
+    // Manual Essay Grading Submission
+    async submitManualGrade(resultId, answers, feedback = '') {
+        const txUuid = TMHIS_DB.generateUUID();
+        const payload = {
+            client_transaction_uuid: txUuid,
+            result_id: resultId,
+            answers: answers,
+            feedback: feedback
+        };
+
+        if (!this.isOnlineState) {
+            console.log('[TMHIS Sync] Device is offline. Enqueuing manual essay grading...');
+            await TMHIS_DB.enqueueSyncItem('assessment_submission', 'update', payload);
+            this.updateOnlineBadge();
+            return {
+                success: true,
+                offline: true,
+                queued: true,
+                message: 'Manual grades and feedback saved locally. Will sync when reconnected.'
+            };
+        }
+
+        try {
+            return await API.post(`/api/results/${resultId}/manual-score`, { answers, feedback });
+        } catch (err) {
+            await TMHIS_DB.enqueueSyncItem('assessment_submission', 'update', payload);
+            this.updateOnlineBadge();
+            return {
+                success: true,
+                offline: true,
+                queued: true,
+                message: 'Network issue. Grades saved locally and queued for automatic sync.'
+            };
+        }
+    },
+
     // ----------------------------------------------------
     // Offline Data Package Downloader
     // ----------------------------------------------------

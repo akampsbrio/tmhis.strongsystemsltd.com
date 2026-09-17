@@ -4576,11 +4576,22 @@ const App = {
                 } catch (e) {}
             }
 
+            // Fetch per-learner offline summaries
+            let learnerSummaries = [];
+            if (typeof TMHIS_DB !== 'undefined' && TMHIS_DB.getLearnerOfflineSummary) {
+                try {
+                    learnerSummaries = await TMHIS_DB.getLearnerOfflineSummary();
+                } catch (e) {
+                    console.warn('[TMHIS App] getLearnerOfflineSummary error:', e);
+                }
+            }
+
             const isOnline = TMHIS_Sync ? TMHIS_Sync.isOnlineState : navigator.onLine;
             const deviceUuid = TMHIS_Sync ? TMHIS_Sync.getOrCreateDeviceUuid() : 'Browser Storage';
+            const lastPkgMeta = storageStats?.last_package_meta || null;
 
             container.innerHTML = `
-                <div class="fade-in" style="max-width:1100px; margin:0 auto; padding-bottom:3rem;">
+                <div class="fade-in" style="max-width:1150px; margin:0 auto; padding-bottom:3rem;">
                     <!-- Header Bar -->
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:1.5rem;">
                         <div>
@@ -4591,7 +4602,7 @@ const App = {
                                 </span>
                             </div>
                             <p style="color:var(--text-muted); margin-top:4px; font-size:0.88rem;">
-                                Continue homeschooling seamlessly without internet. Data is cached locally and safely synchronised upon reconnection.
+                                Complete offline homeschooling access for curriculum lessons, parental guides, quizzes, termly exams, UNEB division grading, and mark sheets.
                             </p>
                         </div>
                         <div style="display:flex; gap:8px;">
@@ -4605,59 +4616,79 @@ const App = {
                     <div id="offline-center-alert"></div>
 
                     <!-- Top Statistics Cards -->
-                    <div class="offline-center-grid">
+                    <div class="offline-center-grid" style="grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
                         <div class="offline-stat-card">
-                            <div style="color:var(--text-muted); font-size:0.8rem; font-weight:700; text-transform:uppercase;">Network Connectivity</div>
-                            <div class="offline-stat-val" style="color:${isOnline ? '#059669' : '#ea580c'}; font-size:1.4rem;">
+                            <div style="color:var(--text-muted); font-size:0.75rem; font-weight:700; text-transform:uppercase;">Network Connectivity</div>
+                            <div class="offline-stat-val" style="color:${isOnline ? '#059669' : '#ea580c'}; font-size:1.35rem;">
                                 ${isOnline ? '🟢 Connected' : '🟠 Offline Mode'}
                             </div>
                             <div style="font-size:0.75rem; color:var(--text-muted);">
-                                Device UUID: <code style="font-size:0.72rem;">${deviceUuid.substring(0, 18)}...</code>
+                                Device UUID: <code style="font-size:0.72rem;">${deviceUuid.substring(0, 16)}...</code>
                             </div>
                         </div>
 
                         <div class="offline-stat-card">
-                            <div style="color:var(--text-muted); font-size:0.8rem; font-weight:700; text-transform:uppercase;">Local Pending Queue</div>
+                            <div style="color:var(--text-muted); font-size:0.75rem; font-weight:700; text-transform:uppercase;">Pending Sync Queue</div>
                             <div class="offline-stat-val" style="color:#2563eb;">
                                 ${pendingItems.filter(i => i.status === 'pending' || i.status === 'failed').length}
                             </div>
                             <div style="font-size:0.75rem; color:var(--text-muted);">
-                                ${pendingItems.filter(i => i.status === 'synced').length} items synced locally
+                                ${pendingItems.filter(i => i.status === 'synced').length} synced transactions
                             </div>
                         </div>
 
                         <div class="offline-stat-card">
-                            <div style="color:var(--text-muted); font-size:0.8rem; font-weight:700; text-transform:uppercase;">Cached Lessons & Guides</div>
+                            <div style="color:var(--text-muted); font-size:0.75rem; font-weight:700; text-transform:uppercase;">Cached Lessons & Guides</div>
                             <div class="offline-stat-val" style="color:#7c3aed;">
                                 ${storageStats ? (storageStats.counts.lessons + storageStats.counts.guides) : 0}
                             </div>
                             <div style="font-size:0.75rem; color:var(--text-muted);">
-                                ${storageStats ? storageStats.counts.assessments : 0} Assessments • ${storageStats?.storage?.usageMB || '0.00'} MB Used
+                                ${storageStats?.counts?.lessons || 0} Lessons &bull; ${storageStats?.counts?.guides || 0} Guides
+                            </div>
+                        </div>
+
+                        <div class="offline-stat-card">
+                            <div style="color:var(--text-muted); font-size:0.75rem; font-weight:700; text-transform:uppercase;">Cached Exams & Quizzes</div>
+                            <div class="offline-stat-val" style="color:#0891b2;">
+                                ${storageStats ? ((storageStats.counts.exams || 0) + (storageStats.counts.assessments || 0)) : 0}
+                            </div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">
+                                ${storageStats?.counts?.exam_papers || 0} Exam Papers &bull; ${storageStats?.storage?.usageMB || '0.00'} MB Storage
                             </div>
                         </div>
                     </div>
 
                     <!-- Offline Package Downloader Panel -->
-                    <div class="card" style="margin-bottom:1.5rem; padding:1.25rem;">
-                        <h3 style="margin-top:0; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
-                            <span>📥</span> Download Curriculum Package for Offline Study
-                        </h3>
-                        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">
-                            Download complete syllabus lessons, parent guides, quizzes, and assessments for your learners into local storage.
-                        </p>
+                    <div class="card" style="margin-bottom:1.5rem; padding:1.25rem; border:1px solid #e2e8f0; border-radius:10px; background:#fff;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
+                            <div>
+                                <h3 style="margin:0 0 0.35rem 0; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+                                    <span>📥</span> Download Full Curriculum & Exam Packages
+                                </h3>
+                                <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">
+                                    Download complete syllabus lessons, parental guides, quizzes, termly exam sets, question papers, marking schemes, and candidate history into local IndexedDB storage.
+                                </p>
+                            </div>
+                            ${isOnline ? `
+                                <button type="button" class="btn btn-primary btn-sm" onclick="App.handleDownloadAllPackage()" style="white-space:nowrap;">
+                                    ⚡ Download All Learners Data
+                                </button>
+                            ` : ''}
+                        </div>
 
                         <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
                             ${learners.length > 0 ? `
-                                <div style="flex:1; min-width:200px;">
+                                <div style="flex:1; min-width:220px;">
                                     <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Select Child / Class</label>
-                                    <select id="download-learner-select" class="form-control" style="height:34px; font-size:0.84rem;">
+                                    <select id="download-learner-select" class="form-control" style="height:36px; font-size:0.84rem;">
+                                        <option value="">🎒 All Registered Learners (${learners.length})</option>
                                         ${learners.map(l => `<option value="${l.learner_id}">🎒 ${this.escapeHtml(l.full_name)} (${l.class_code || 'P' + l.class_level})</option>`).join('')}
                                     </select>
                                 </div>
                             ` : `
-                                <div style="flex:1; min-width:200px;">
+                                <div style="flex:1; min-width:220px;">
                                     <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Select Primary Class</label>
-                                    <select id="download-class-select" class="form-control" style="height:34px; font-size:0.84rem;">
+                                    <select id="download-class-select" class="form-control" style="height:36px; font-size:0.84rem;">
                                         <option value="1">Primary 1 (P1)</option>
                                         <option value="2">Primary 2 (P2)</option>
                                         <option value="3">Primary 3 (P3)</option>
@@ -4670,7 +4701,7 @@ const App = {
                             `}
 
                             <button type="button" class="btn btn-primary" onclick="App.handleDownloadPackage()" ${!isOnline ? 'disabled title="Requires internet connection"' : ''}>
-                                ⬇️ Download Offline Package
+                                ⬇️ Download Selected Package
                             </button>
 
                             <button type="button" class="btn btn-secondary" onclick="App.handleClearOfflineData()">
@@ -4679,10 +4710,118 @@ const App = {
                         </div>
                     </div>
 
+                    <!-- WHAT HAS BEEN DOWNLOADED: PER-LEARNER DETAILED INSPECTION CARDS -->
+                    <div class="card" style="margin-bottom:1.5rem; padding:1.25rem; border:1px solid #e2e8f0; border-radius:10px; background:#fff;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+                            <h3 style="margin:0; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+                                <span>🎓</span> Downloaded Content Breakdown by Learner (${learnerSummaries.length})
+                            </h3>
+                            ${lastPkgMeta?.timestamp ? `
+                                <span style="font-size:0.78rem; color:var(--text-muted);">
+                                    Last Package Sync: <strong>${new Date(lastPkgMeta.timestamp).toLocaleString()}</strong>
+                                </span>
+                            ` : ''}
+                        </div>
+
+                        ${learnerSummaries.length === 0 ? `
+                            <div style="text-align:center; padding:2rem 1rem; color:var(--text-muted); background:#f8fafc; border-radius:8px; border:1px dashed #cbd5e1;">
+                                <div style="font-size:2rem; margin-bottom:0.4rem;">📦</div>
+                                <p style="margin:0 0 0.75rem 0; font-size:0.9rem;">No offline learner packages downloaded yet.</p>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="App.handleDownloadPackage()" ${!isOnline ? 'disabled' : ''}>
+                                    Download Offline Package Now
+                                </button>
+                            </div>
+                        ` : `
+                            <div style="display:flex; flex-direction:column; gap:1rem;">
+                                ${learnerSummaries.map((summary, idx) => {
+                                    const l = summary.learner;
+                                    const counts = summary.counts;
+                                    const avatar = l.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(l.full_name)}&background=0284c7&color=fff&rounded=true&bold=true`;
+                                    
+                                    return `
+                                        <div style="border:1px solid #e2e8f0; border-radius:8px; overflow:hidden; background:#ffffff;">
+                                            <div style="padding:0.9rem 1.15rem; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+                                                <div style="display:flex; align-items:center; gap:0.75rem;">
+                                                    <img src="${App.escapeHtml(avatar)}" style="width:38px; height:38px; border-radius:50%; object-fit:cover; border:2px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                                                    <div>
+                                                        <div style="font-weight:700; font-size:1rem; color:#0f172a; display:flex; align-items:center; gap:0.4rem;">
+                                                            <span>${App.escapeHtml(l.full_name)}</span>
+                                                            <span class="badge" style="background:#2563eb; color:#fff; font-size:0.72rem; padding:0.15rem 0.45rem;">${App.escapeHtml(l.class_code || 'P' + l.class_level)}</span>
+                                                            ${l.age ? `<span style="font-size:0.78rem; color:#64748b; font-weight:normal;">(${l.age} yrs)</span>` : ''}
+                                                        </div>
+                                                        <div style="font-size:0.78rem; color:#64748b;">
+                                                            ${App.escapeHtml(l.class_name || 'Primary')} &bull; Status: <span style="color:#16a34a; font-weight:600;">Active & Cached</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button class="btn btn-outline btn-sm" style="font-size:0.75rem; padding:0.2rem 0.6rem;" onclick="document.getElementById('learner-cache-details-${idx}').style.display = document.getElementById('learner-cache-details-${idx}').style.display === 'none' ? 'block' : 'none'">
+                                                    🔍 Inspect Cached Items
+                                                </button>
+                                            </div>
+
+                                            <div style="padding:1rem 1.15rem;">
+                                                <!-- Metric Badge Chips -->
+                                                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:0.6rem; margin-bottom:0.75rem;">
+                                                    <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:0.5rem 0.65rem; border-radius:6px; text-align:center;">
+                                                        <div style="font-size:1.15rem; font-weight:800; color:#1d4ed8;">${counts.subjects}</div>
+                                                        <div style="font-size:0.72rem; color:#1e40af; font-weight:600;">📚 Subjects</div>
+                                                    </div>
+                                                    <div style="background:#f3e8ff; border:1px solid #e9d5ff; padding:0.5rem 0.65rem; border-radius:6px; text-align:center;">
+                                                        <div style="font-size:1.15rem; font-weight:800; color:#7e22ce;">${counts.lessons}</div>
+                                                        <div style="font-size:0.72rem; color:#6b21a8; font-weight:600;">📖 Lessons</div>
+                                                    </div>
+                                                    <div style="background:#fef3c7; border:1px solid #fde68a; padding:0.5rem 0.65rem; border-radius:6px; text-align:center;">
+                                                        <div style="font-size:1.15rem; font-weight:800; color:#b45309;">${counts.guides}</div>
+                                                        <div style="font-size:0.72rem; color:#92400e; font-weight:600;">💡 Teaching Guides</div>
+                                                    </div>
+                                                    <div style="background:#ecfdf5; border:1px solid #a7f3d0; padding:0.5rem 0.65rem; border-radius:6px; text-align:center;">
+                                                        <div style="font-size:1.15rem; font-weight:800; color:#047857;">${counts.assessments}</div>
+                                                        <div style="font-size:0.72rem; color:#065f46; font-weight:600;">📝 Quizzes & Tests</div>
+                                                    </div>
+                                                    <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:0.5rem 0.65rem; border-radius:6px; text-align:center;">
+                                                        <div style="font-size:1.15rem; font-weight:800; color:#15803d;">${counts.exams} Sets (${counts.papers} Papers)</div>
+                                                        <div style="font-size:0.72rem; color:#166534; font-weight:600;">🎓 Termly Exams</div>
+                                                    </div>
+                                                    <div style="background:#f1f5f9; border:1px solid #cbd5e1; padding:0.5rem 0.65rem; border-radius:6px; text-align:center;">
+                                                        <div style="font-size:1.15rem; font-weight:800; color:#334155;">${counts.submissions} Sittings</div>
+                                                        <div style="font-size:0.72rem; color:#475569; font-weight:600;">🏆 UNEB Reports</div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Expandable Detail Drawer -->
+                                                <div id="learner-cache-details-${idx}" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:1px dashed #e2e8f0; font-size:0.82rem;">
+                                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                                                        <div>
+                                                            <div style="font-weight:700; color:#334155; margin-bottom:0.35rem;">📚 Downloaded Subjects:</div>
+                                                            <ul style="margin:0; padding-left:1.2rem; color:#64748b;">
+                                                                ${summary.subjects_list.map(s => `<li><strong>${App.escapeHtml(s.name)}</strong> (${s.lessons_count} lessons ready)</li>`).join('')}
+                                                            </ul>
+                                                        </div>
+                                                        <div>
+                                                            <div style="font-weight:700; color:#334155; margin-bottom:0.35rem;">🎓 Exam Sets & UNEB Grading:</div>
+                                                            <ul style="margin:0; padding-left:1.2rem; color:#64748b;">
+                                                                ${summary.exams_list.map(e => `
+                                                                    <li>
+                                                                        <strong>${App.escapeHtml(e.title)}</strong> (${e.papers_count} papers)
+                                                                        ${e.submission ? `<span class="badge" style="background:#16a34a; color:#fff; font-size:0.68rem; margin-left:4px;">Div ${e.submission.division} (Agg ${e.submission.total_aggregate})</span>` : '<span style="color:#64748b; font-size:0.72rem;">(Ready for offline mark entry)</span>'}
+                                                                    </li>
+                                                                `).join('')}
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `}
+                    </div>
+
                     <!-- Client Sync Queue Table -->
-                    <div class="card" style="margin-bottom:1.5rem; padding:1.25rem;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                            <h3 style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
+                    <div class="card" style="margin-bottom:1.5rem; padding:1.25rem; border:1px solid #e2e8f0; border-radius:10px; background:#fff;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+                            <h3 style="margin:0; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
                                 <span>📋</span> Local Sync Transactions (${pendingItems.length})
                             </h3>
                             ${pendingItems.some(i => i.status === 'failed') ? `
@@ -4736,8 +4875,8 @@ const App = {
 
                     <!-- Server Sync History Logs -->
                     ${serverStatus && Array.isArray(serverStatus.recent_logs) && serverStatus.recent_logs.length > 0 ? `
-                        <div class="card" style="padding:1.25rem;">
-                            <h3 style="margin-top:0; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
+                        <div class="card" style="padding:1.25rem; border:1px solid #e2e8f0; border-radius:10px; background:#fff;">
+                            <h3 style="margin-top:0; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
                                 <span>📜</span> Cloud Synchronisation Audit Log
                             </h3>
                             <div style="overflow-x:auto;">
@@ -4779,24 +4918,60 @@ const App = {
     },
 
     openOfflineCenterModal() {
-        this.showModal('📡 TMHIS Offline Mode & Sync Manager', '<div id="offline-modal-inner"></div>');
+        this.showModal('📡 TMHIS Offline Mode & Sync Manager', '<div id="offline-modal-inner"></div>', 'xl');
         const inner = document.getElementById('offline-modal-inner');
         if (inner) {
             this.renderOfflineCenter(inner);
         }
     },
 
+    async handleDownloadAllPackage() {
+        const alertContainer = document.getElementById('offline-center-alert');
+        if (alertContainer) {
+            alertContainer.innerHTML = `
+                <div class="alert alert-info">
+                    <span>⏳ Downloading comprehensive package for all learners, lessons, quizzes, exam papers, and UNEB grading schemes... Please wait.</span>
+                </div>
+            `;
+        }
+
+        try {
+            const pkg = await TMHIS_Sync.downloadClassPackage(null, null);
+            if (alertContainer) {
+                alertContainer.innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>🎉 All Learner Packages Downloaded!</strong><br>
+                        Cached ${pkg.counts?.learners || 0} Learners, ${pkg.counts?.lessons || 0} Lessons, ${pkg.counts?.guides || 0} Parental Guides, ${pkg.counts?.assessments || 0} Quizzes, and ${pkg.counts?.exams || 0} Exam Sets (${pkg.counts?.exam_papers || 0} papers) for full offline study.
+                    </div>
+                `;
+            }
+            // Refresh view
+            const content = document.getElementById('app-content');
+            const modalInner = document.getElementById('offline-modal-inner');
+            if (modalInner) this.renderOfflineCenter(modalInner);
+            else if (content && (window.location.hash.includes('offline') || window.location.hash.includes('learner-downloads'))) this.renderOfflineCenter(content);
+        } catch (err) {
+            if (alertContainer) {
+                alertContainer.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Download Failed:</strong> ${this.escapeHtml(err.message)}
+                    </div>
+                `;
+            }
+        }
+    },
+
     async handleDownloadPackage() {
         const learnerSelect = document.getElementById('download-learner-select');
         const classSelect = document.getElementById('download-class-select');
-        const learnerId = learnerSelect ? learnerSelect.value : null;
+        const learnerId = learnerSelect && learnerSelect.value ? learnerSelect.value : null;
         const classId = classSelect ? classSelect.value : null;
 
         const alertContainer = document.getElementById('offline-center-alert');
         if (alertContainer) {
             alertContainer.innerHTML = `
                 <div class="alert alert-info">
-                    <span>⏳ Downloading curriculum lessons, parental guides, and assessments for offline study... Please wait.</span>
+                    <span>⏳ Downloading curriculum lessons, parental guides, exams, and assessments for offline study... Please wait.</span>
                 </div>
             `;
         }
@@ -4807,7 +4982,7 @@ const App = {
                 alertContainer.innerHTML = `
                     <div class="alert alert-success">
                         <strong>🎉 Offline Package Downloaded!</strong><br>
-                        Stored ${pkg.counts?.lessons || 0} Lessons, ${pkg.counts?.guides || 0} Parental Guides, and ${pkg.counts?.assessments || 0} Assessments locally.
+                        Stored ${pkg.counts?.lessons || 0} Lessons, ${pkg.counts?.guides || 0} Parental Guides, ${pkg.counts?.assessments || 0} Quizzes, and ${pkg.counts?.exams || 0} Exam Sets locally.
                     </div>
                 `;
             }
@@ -4815,7 +4990,7 @@ const App = {
             const content = document.getElementById('app-content');
             const modalInner = document.getElementById('offline-modal-inner');
             if (modalInner) this.renderOfflineCenter(modalInner);
-            else if (content && window.location.hash.includes('offline')) this.renderOfflineCenter(content);
+            else if (content && (window.location.hash.includes('offline') || window.location.hash.includes('learner-downloads'))) this.renderOfflineCenter(content);
         } catch (err) {
             if (alertContainer) {
                 alertContainer.innerHTML = `
@@ -4863,7 +5038,7 @@ const App = {
     },
 
     async handleClearOfflineData() {
-        if (!confirm('Are you sure you want to clear all cached lessons and guides from your device? (Your pending sync submissions will be preserved).')) {
+        if (!confirm('Are you sure you want to clear all cached lessons, guides, and exams from your device? (Your pending sync submissions will be preserved).')) {
             return;
         }
 
@@ -4873,7 +5048,12 @@ const App = {
             await TMHIS_DB.clear('assessments');
             await TMHIS_DB.clear('assessment_questions');
             await TMHIS_DB.clear('assessment_options');
+            await TMHIS_DB.clear('assessment_results');
+            await TMHIS_DB.clear('assessment_answers');
             await TMHIS_DB.clear('subjects');
+            await TMHIS_DB.clear('exams');
+            await TMHIS_DB.clear('exam_papers');
+            await TMHIS_DB.clear('materials');
 
             const content = document.getElementById('app-content');
             const modalInner = document.getElementById('offline-modal-inner');
@@ -4884,7 +5064,52 @@ const App = {
         }
     },
 
-    showModal(title, contentHtml) {
+    /**
+     * Resilient Modal System
+     * Supports both showModal(title, content, size) and showModal(content, title, size)
+     * Strips and handles raw HTML error fragments gracefully
+     */
+    showModal(titleOrContent, contentOrTitle, size = 'lg') {
+        let title = 'TMHIS Portal';
+        let contentHtml = '';
+        let modalSize = 'lg';
+
+        // Detect if first argument is HTML content
+        if (typeof titleOrContent === 'string' && (
+            titleOrContent.trim().startsWith('<') || 
+            titleOrContent.includes('</div>') || 
+            titleOrContent.includes('</p>') || 
+            titleOrContent.includes('<!DOCTYPE') ||
+            titleOrContent.includes('<form')
+        )) {
+            contentHtml = titleOrContent;
+            title = typeof contentOrTitle === 'string' && !contentOrTitle.trim().startsWith('<') ? contentOrTitle : 'TMHIS Portal';
+            modalSize = (typeof size === 'string' && size) ? size : (typeof contentOrTitle === 'string' && ['sm', 'md', 'lg', 'xl'].includes(contentOrTitle) ? contentOrTitle : 'lg');
+        } else {
+            title = titleOrContent || 'TMHIS Portal';
+            contentHtml = contentOrTitle || '';
+            modalSize = (typeof size === 'string' && size) ? size : 'lg';
+        }
+
+        // Clean raw HTML error fragments or DOCTYPE pages
+        if (typeof contentHtml === 'string' && (contentHtml.includes('<!DOCTYPE') || contentHtml.includes('<html'))) {
+            contentHtml = `
+                <div class="alert alert-warning" style="margin:1rem 0;">
+                    <h4 style="margin:0 0 0.5rem 0;">📡 Offline Mode Notice</h4>
+                    <p style="margin:0;">The requested resource is not currently cached in local storage. Please connect to internet to synchronize this item.</p>
+                </div>
+            `;
+        }
+
+        // Determine max-width according to size
+        const maxWidthMap = {
+            'sm': '480px',
+            'md': '640px',
+            'lg': '850px',
+            'xl': '1100px'
+        };
+        const maxWidth = maxWidthMap[modalSize] || '850px';
+
         let overlay = document.getElementById('global-dynamic-modal');
         if (!overlay) {
             overlay = document.createElement('div');
@@ -4897,9 +5122,9 @@ const App = {
         overlay.style.opacity = '1';
 
         overlay.innerHTML = `
-            <div class="card" style="width:100%; max-width:850px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; border-radius:12px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); border:1px solid #e2e8f0; animation:modalPop 0.2s ease-out;">
+            <div class="card" style="width:100%; max-width:${maxWidth}; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; border-radius:12px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); border:1px solid #e2e8f0; background:#ffffff; animation:modalPop 0.2s ease-out;">
                 <div style="padding:1.1rem 1.5rem; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; background:#f8fafc;">
-                    <h3 style="margin:0; font-size:1.25rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:0.5rem;">${this.escapeHtml(title)}</h3>
+                    <h3 style="margin:0; font-size:1.2rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:0.5rem;">${this.escapeHtml(title)}</h3>
                     <button type="button" class="close-btn" onclick="App.hideModal()" style="background:none; border:none; font-size:1.6rem; color:#64748b; cursor:pointer; line-height:1; padding:0.2rem 0.5rem; border-radius:6px; transition:color 0.15s;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#64748b'">&times;</button>
                 </div>
                 <div style="padding:1.5rem; overflow-y:auto; flex:1; background:#ffffff;">
@@ -4937,3 +5162,4 @@ const App = {
 
 // Start application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => App.init());
+
