@@ -83,8 +83,21 @@ const AssessmentsApp = {
         if (this.currentFilters.assessment_type) params.append('assessment_type', this.currentFilters.assessment_type);
         if (this.currentFilters.search) params.append('search', this.currentFilters.search);
 
-        const res = await API.get('/api/assessments?' + params.toString());
-        this.assessments = Array.isArray(res.data) ? res.data : (res.data?.assessments || []);
+        try {
+            const res = await API.get('/api/assessments?' + params.toString()).catch(() => ({ data: [] }));
+            let items = Array.isArray(res.data) ? res.data : (res.data?.assessments || []);
+            if (items.length === 0 && typeof TMHIS_DB !== 'undefined' && TMHIS_DB.getAssessments) {
+                items = await TMHIS_DB.getAssessments();
+            }
+            this.assessments = items;
+        } catch (e) {
+            console.error('[AssessmentsApp] loadAssessments error:', e);
+            if (typeof TMHIS_DB !== 'undefined' && TMHIS_DB.getAssessments) {
+                this.assessments = await TMHIS_DB.getAssessments();
+            } else {
+                this.assessments = [];
+            }
+        }
     },
 
     /**
@@ -368,14 +381,33 @@ const AssessmentsApp = {
                 localStorage.setItem(attemptKey, clientUuid);
             }
 
-            // 4. Start attempt on backend
-            const startRes = await API.post(`/api/assessments/${assessmentId}/attempts`, {
-                learner_id: learnerId,
-                client_attempt_uuid: clientUuid,
-                attempt_mode: navigator.onLine ? 'online' : 'offline'
-            });
+            // 4. Start attempt on backend or local store
+            let attempt = null;
+            if (typeof API !== 'undefined' && !API.isOffline()) {
+                try {
+                    const startRes = await API.post(`/api/assessments/${assessmentId}/attempts`, {
+                        learner_id: learnerId,
+                        client_attempt_uuid: clientUuid,
+                        attempt_mode: 'online'
+                    });
+                    attempt = startRes?.data?.attempt;
+                } catch (e) {
+                    console.warn('[AssessmentsApp] Online attempt creation failed, falling back to local offline session:', e);
+                }
+            }
 
-            this.activeAttempt = startRes.data.attempt;
+            if (!attempt) {
+                attempt = {
+                    attempt_id: clientUuid,
+                    assessment_id: assessmentId,
+                    learner_id: learnerId,
+                    attempt_mode: 'offline',
+                    status: 'in_progress',
+                    started_at: new Date().toISOString()
+                };
+            }
+
+            this.activeAttempt = attempt;
             this.currentQuestionIndex = 0;
             this.answers = {};
 

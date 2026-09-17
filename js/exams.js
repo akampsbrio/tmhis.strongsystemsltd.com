@@ -75,19 +75,27 @@ const ExamsApp = {
             if (this.currentFilters.term_id) params.append('term_id', this.currentFilters.term_id);
             if (this.currentFilters.exam_type) params.append('exam_type', this.currentFilters.exam_type);
 
-            const res = await API.get(`/api/exams/sets?${params.toString()}`);
+            const res = await API.get(`/api/exams/sets?${params.toString()}`).catch(() => ({ data: [] }));
+            let sets = [];
             if (res && Array.isArray(res.data)) {
-                this.examSets = res.data;
+                sets = res.data;
             } else if (res && Array.isArray(res.data?.sets)) {
-                this.examSets = res.data.sets;
+                sets = res.data.sets;
             } else if (Array.isArray(res)) {
-                this.examSets = res;
+                sets = res;
+            }
+
+            if (sets.length === 0 && typeof TMHIS_DB !== 'undefined' && TMHIS_DB.getExams) {
+                sets = await TMHIS_DB.getExams();
+            }
+            this.examSets = sets;
+        } catch (e) {
+            console.error('Error loading exam sets:', e);
+            if (typeof TMHIS_DB !== 'undefined' && TMHIS_DB.getExams) {
+                this.examSets = await TMHIS_DB.getExams();
             } else {
                 this.examSets = [];
             }
-        } catch (e) {
-            console.error('Error loading exam sets:', e);
-            this.examSets = [];
         }
     },
 

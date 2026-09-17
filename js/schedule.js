@@ -104,12 +104,16 @@ const ScheduleApp = {
                 const endDate = week[6].date;
 
                 const [schedRes, summaryRes, suggestRes] = await Promise.all([
-                    API.get(`/api/parent/schedule?learner_id=${this.selectedLearnerId}&start_date=${startDate}&end_date=${endDate}`),
-                    API.get(`/api/parent/schedule/term-summary?learner_id=${this.selectedLearnerId}&term_id=${this.selectedTermId || ''}`),
-                    API.get(`/api/parent/schedule/suggested-next?learner_id=${this.selectedLearnerId}`)
+                    API.get(`/api/parent/schedule?learner_id=${this.selectedLearnerId}&start_date=${startDate}&end_date=${endDate}`).catch(() => ({ data: [] })),
+                    API.get(`/api/parent/schedule/term-summary?learner_id=${this.selectedLearnerId}&term_id=${this.selectedTermId || ''}`).catch(() => ({ data: null })),
+                    API.get(`/api/parent/schedule/suggested-next?learner_id=${this.selectedLearnerId}`).catch(() => ({ data: null }))
                 ]);
 
-                this.schedules = Array.isArray(schedRes.data) ? schedRes.data : [];
+                let scheds = Array.isArray(schedRes.data) ? schedRes.data : [];
+                if (scheds.length === 0 && typeof TMHIS_DB !== 'undefined' && TMHIS_DB.getSchedules) {
+                    scheds = await TMHIS_DB.getSchedules(this.selectedLearnerId);
+                }
+                this.schedules = scheds;
                 this.termSummary = summaryRes.data || null;
                 this.suggestions = suggestRes.data?.suggestions || [];
             } else if (this.currentViewMode === 'month') {
@@ -119,16 +123,20 @@ const ScheduleApp = {
                 const endDate = lastDay.toISOString().split('T')[0];
 
                 const [schedRes, summaryRes] = await Promise.all([
-                    API.get(`/api/parent/schedule?learner_id=${this.selectedLearnerId}&start_date=${startDate}&end_date=${endDate}`),
-                    API.get(`/api/parent/schedule/term-summary?learner_id=${this.selectedLearnerId}&term_id=${this.selectedTermId || ''}`)
+                    API.get(`/api/parent/schedule?learner_id=${this.selectedLearnerId}&start_date=${startDate}&end_date=${endDate}`).catch(() => ({ data: [] })),
+                    API.get(`/api/parent/schedule/term-summary?learner_id=${this.selectedLearnerId}&term_id=${this.selectedTermId || ''}`).catch(() => ({ data: null }))
                 ]);
 
-                this.schedules = Array.isArray(schedRes.data) ? schedRes.data : [];
+                let scheds = Array.isArray(schedRes.data) ? schedRes.data : [];
+                if (scheds.length === 0 && typeof TMHIS_DB !== 'undefined' && TMHIS_DB.getSchedules) {
+                    scheds = await TMHIS_DB.getSchedules(this.selectedLearnerId);
+                }
+                this.schedules = scheds;
                 this.termSummary = summaryRes.data || null;
             } else if (this.currentViewMode === 'term') {
                 const [roadmapRes, summaryRes] = await Promise.all([
-                    API.get(`/api/parent/schedule/term-roadmap?learner_id=${this.selectedLearnerId}&term_id=${this.selectedTermId || ''}`),
-                    API.get(`/api/parent/schedule/term-summary?learner_id=${this.selectedLearnerId}&term_id=${this.selectedTermId || ''}`)
+                    API.get(`/api/parent/schedule/term-roadmap?learner_id=${this.selectedLearnerId}&term_id=${this.selectedTermId || ''}`).catch(() => ({ data: null })),
+                    API.get(`/api/parent/schedule/term-summary?learner_id=${this.selectedLearnerId}&term_id=${this.selectedTermId || ''}`).catch(() => ({ data: null }))
                 ]);
 
                 this.termRoadmap = roadmapRes.data || null;

@@ -1765,4 +1765,47 @@ footer.app-footer {
     background: #f8fafc;
 }
 
+/* Offline Banner & Cached Badges */
+.offline-banner-alert {
+    background: linear-gradient(90deg, #fffbeb 0%, #fef3c7 100%);
+    border-left: 4px solid #f59e0b;
+    color: #92400e;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.88rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.08);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.offline-cached-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding: 0.6rem 1rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border-left: 4px solid #3b82f6;
+    font-size: 0.85rem;
+    color: #475569;
+    font-weight: 500;
+}
+
+.offline-indicator-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    background: #fef3c7;
+    color: #b45309;
+    font-weight: 600;
+}
+
 

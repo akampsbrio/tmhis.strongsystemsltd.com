@@ -64,11 +64,19 @@ const GuidesApp = {
         params.append('limit', '50');
 
         try {
-            const res = await API.get('/api/parent/guides?' + params.toString());
-            this.guides = res.data?.guides || [];
+            const res = await API.get('/api/parent/guides?' + params.toString()).catch(() => ({ data: { guides: [] } }));
+            let guides = res.data?.guides || (Array.isArray(res.data) ? res.data : []);
+            if (guides.length === 0 && typeof TMHIS_DB !== 'undefined' && TMHIS_DB.getGuides) {
+                guides = await TMHIS_DB.getGuides();
+            }
+            this.guides = guides;
         } catch (e) {
             console.error('[GuidesApp] loadGuides error:', e);
-            this.guides = [];
+            if (typeof TMHIS_DB !== 'undefined' && TMHIS_DB.getGuides) {
+                this.guides = await TMHIS_DB.getGuides();
+            } else {
+                this.guides = [];
+            }
         }
     },
 

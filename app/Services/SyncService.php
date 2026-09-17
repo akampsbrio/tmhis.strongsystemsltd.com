@@ -133,6 +133,22 @@ class SyncService
                     $syncTypeLog = 'progress';
                     break;
 
+                case 'schedule_create':
+                    $syncResult = self::handleScheduleCreate($userId, $learnerId, $payload);
+                    $syncTypeLog = 'progress';
+                    break;
+
+                case 'learner_create':
+                    $syncResult = self::handleLearnerCreate($userId, $payload);
+                    $learnerId = $syncResult['learner_id'] ?? $learnerId;
+                    $syncTypeLog = 'activity';
+                    break;
+
+                case 'learner_update':
+                    $syncResult = self::handleLearnerUpdate($userId, $learnerId, $payload);
+                    $syncTypeLog = 'activity';
+                    break;
+
                 case 'lesson_observation':
                     $syncResult = self::handleLessonObservation($userId, $learnerId, $payload);
                     $syncTypeLog = 'lesson';
@@ -761,6 +777,271 @@ class SyncService
     }
 
     /**
+     * Handler: Offline Learner Creation
+     */
+    private static function handleLearnerCreate(int $userId, array $payload): array
+    {
+        $db = Database::getConnection();
+
+        $fullName = trim((string)($payload['full_name'] ?? ''));
+        $dobStr = trim((string)($payload['date_of_birth'] ?? ''));
+        $gender = strtolower(trim((string)($payload['gender'] ?? 'male')));
+        $classId = (int)($payload['class_id'] ?? 0);
+        $specialNeeds = !empty($payload['special_learning_needs']) ? 1 : 0;
+        $specialNeedsDesc = $specialNeeds ? trim((string)($payload['special_needs_description'] ?? '')) : null;
+        $avatarUrl = !empty($payload['avatar_url']) ? trim((string)$payload['avatar_url']) : null;
+        $religiousTrack = strtolower(trim((string)($payload['religious_track'] ?? 'cre')));
+
+        if (empty($fullName) || empty($dobStr) || !$classId) {
+            throw new Exception("Full name, date of birth, and class ID are required to register learner.");
+        }
+
+        // Resolve or create parent record
+        $stmt = $db->prepare('SELECT parent_id FROM parents WHERE user_id = :uid LIMIT 1');
+        $stmt->execute([':uid' => $userId]);
+        $parentId = $stmt->fetchColumn();
+
+        if (!$parentId) {
+            $uStmt = $db->prepare('SELECT full_name, email, phone FROM users WHERE user_id = :uid LIMIT 1');
+            $uStmt->execute([':uid' => $userId]);
+            $uRow = $uStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+            $insParent = $db->prepare('
+                INSERT INTO parents (user_id, full_name, email, phone, status, registration_date, created_at, updated_at)
+                VALUES (:uid, :name, :email, :phone, "active", CURDATE(), NOW(), NOW())
+            ');
+            $insParent->execute([
+                ':uid' => $userId,
+                ':name' => $uRow['full_name'] ?? 'Parent',
+                ':email' => $uRow['email'] ?? ($userId . '@tmhis.local'),
+                ':phone' => $uRow['phone'] ?? '+256 700 000000'
+            ]);
+            $parentId = (int)$db->lastInsertId();
+        }
+
+        // Idempotency check: see if learner was already created (same parent + name + DOB)
+        $dupStmt = $db->prepare('
+            SELECT learner_id 
+            FROM learners 
+            WHERE parent_id = :pid 
+              AND LOWER(TRIM(full_name)) = LOWER(TRIM(:name)) 
+              AND date_of_birth = :dob 
+            LIMIT 1
+        ');
+        $dupStmt->execute([
+            ':pid' => $parentId,
+            ':name' => $fullName,
+            ':dob' => $dobStr
+        ]);
+        $existingLearnerId = $dupStmt->fetchColumn();
+
+        if ($existingLearnerId) {
+            return [
+                'learner_id' => (int)$existingLearnerId,
+                'client_transaction_uuid' => $payload['client_transaction_uuid'] ?? null,
+                'temp_id' => $payload['temp_id'] ?? null,
+                'message' => 'Learner already exists.'
+            ];
+        }
+
+        // Insert new learner
+        $insLearner = $db->prepare('
+            INSERT INTO learners (
+                parent_id,
+                class_id,
+                full_name,
+                date_of_birth,
+                gender,
+                avatar_url,
+                special_learning_needs,
+                special_needs_description,
+                enrolment_date,
+                status,
+                created_at,
+                updated_at
+            ) VALUES (
+                :pid,
+                :cid,
+                :name,
+                :dob,
+                :gender,
+                :avatar,
+                :needs,
+                :desc,
+                CURDATE(),
+                "active",
+                NOW(),
+                NOW()
+            )
+        ');
+        $insLearner->execute([
+            ':pid' => $parentId,
+            ':cid' => $classId,
+            ':name' => $fullName,
+            ':dob' => $dobStr,
+            ':gender' => $gender,
+            ':avatar' => $avatarUrl,
+            ':needs' => $specialNeeds,
+            ':desc' => $specialNeedsDesc
+        ]);
+        $newLearnerId = (int)$db->lastInsertId();
+
+        // Auto-allocate subjects for class
+        $subStmt = $db->prepare('SELECT subject_id, subject_code FROM subjects WHERE class_id = :cid AND is_active = 1');
+        $subStmt->execute([':cid' => $classId]);
+        $subjects = $subStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $insSub = $db->prepare('
+            INSERT INTO learner_subjects (learner_id, subject_id, status, enrolled_date, created_at, updated_at)
+            VALUES (:lid, :sid, "active", CURDATE(), NOW(), NOW())
+            ON DUPLICATE KEY UPDATE status = "active"
+        ');
+
+        foreach ($subjects as $s) {
+            $code = strtoupper($s['subject_code']);
+            if ($religiousTrack === 'cre' && str_contains($code, 'IRE')) continue;
+            if ($religiousTrack === 'ire' && str_contains($code, 'CRE')) continue;
+
+            $insSub->execute([
+                ':lid' => $newLearnerId,
+                ':sid' => (int)$s['subject_id']
+            ]);
+        }
+
+        return [
+            'learner_id' => $newLearnerId,
+            'client_transaction_uuid' => $payload['client_transaction_uuid'] ?? null,
+            'temp_id' => $payload['temp_id'] ?? null,
+            'full_name' => $fullName,
+            'class_id' => $classId
+        ];
+    }
+
+    /**
+     * Handler: Offline Learner Update
+     */
+    private static function handleLearnerUpdate(int $userId, ?int $learnerId, array $payload): array
+    {
+        $db = Database::getConnection();
+        $learnerId = $learnerId ?: (int)($payload['learner_id'] ?? 0);
+
+        if (!$learnerId) {
+            throw new Exception("Learner ID is required for update.");
+        }
+
+        self::verifyLearnerAccess($userId, $learnerId);
+
+        $fullName = trim((string)($payload['full_name'] ?? ''));
+        $dobStr = trim((string)($payload['date_of_birth'] ?? ''));
+        $gender = strtolower(trim((string)($payload['gender'] ?? '')));
+        $classId = isset($payload['class_id']) ? (int)$payload['class_id'] : null;
+        $specialNeeds = isset($payload['special_learning_needs']) ? (!empty($payload['special_learning_needs']) ? 1 : 0) : null;
+        $specialNeedsDesc = isset($payload['special_needs_description']) ? trim((string)$payload['special_needs_description']) : null;
+        $avatarUrl = isset($payload['avatar_url']) ? trim((string)$payload['avatar_url']) : null;
+
+        $updateFields = [];
+        $params = [':lid' => $learnerId];
+
+        if (!empty($fullName)) {
+            $updateFields[] = 'full_name = :name';
+            $params[':name'] = $fullName;
+        }
+        if (!empty($dobStr)) {
+            $updateFields[] = 'date_of_birth = :dob';
+            $params[':dob'] = $dobStr;
+        }
+        if (!empty($gender)) {
+            $updateFields[] = 'gender = :gender';
+            $params[':gender'] = $gender;
+        }
+        if ($classId !== null && $classId > 0) {
+            $updateFields[] = 'class_id = :cid';
+            $params[':cid'] = $classId;
+        }
+        if ($specialNeeds !== null) {
+            $updateFields[] = 'special_learning_needs = :needs';
+            $params[':needs'] = $specialNeeds;
+            $updateFields[] = 'special_needs_description = :needs_desc';
+            $params[':needs_desc'] = $specialNeedsDesc;
+        }
+        if ($avatarUrl !== null) {
+            $updateFields[] = 'avatar_url = :avatar';
+            $params[':avatar'] = $avatarUrl;
+        }
+
+        if (!empty($updateFields)) {
+            $updateFields[] = 'updated_at = NOW()';
+            $sql = 'UPDATE learners SET ' . implode(', ', $updateFields) . ' WHERE learner_id = :lid';
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+        }
+
+        return [
+            'learner_id' => $learnerId,
+            'updated' => true
+        ];
+    }
+
+    /**
+     * Handler: Offline Schedule Create
+     */
+    private static function handleScheduleCreate(int $userId, ?int $learnerId, array $payload): array
+    {
+        $db = Database::getConnection();
+        $learnerId = $learnerId ?: (int)($payload['learner_id'] ?? 0);
+        $lessonId = (int)($payload['lesson_id'] ?? 0);
+        $scheduledDate = $payload['scheduled_date'] ?? date('Y-m-d');
+        $startTime = $payload['start_time'] ?? '09:00:00';
+        $endTime = $payload['end_time'] ?? '10:00:00';
+        $notes = $payload['notes'] ?? null;
+
+        if (!$learnerId || !$lessonId) {
+            throw new Exception("Learner ID and Lesson ID are required for schedule.");
+        }
+
+        self::verifyLearnerAccess($userId, $learnerId);
+
+        $stmt = $db->prepare('
+            INSERT INTO learning_schedules (
+                learner_id,
+                lesson_id,
+                scheduled_date,
+                start_time,
+                end_time,
+                status,
+                notes,
+                created_at,
+                updated_at
+            ) VALUES (
+                :lid,
+                :lesson_id,
+                :sched_date,
+                :start_time,
+                :end_time,
+                "planned",
+                :notes,
+                NOW(),
+                NOW()
+            )
+        ');
+        $stmt->execute([
+            ':lid' => $learnerId,
+            ':lesson_id' => $lessonId,
+            ':sched_date' => $scheduledDate,
+            ':start_time' => $startTime,
+            ':end_time' => $endTime,
+            ':notes' => $notes
+        ]);
+        $scheduleId = (int)$db->lastInsertId();
+
+        return [
+            'schedule_id' => $scheduleId,
+            'learner_id' => $learnerId,
+            'lesson_id' => $lessonId
+        ];
+    }
+
+    /**
      * Verify that the current user owns or is authorized to act for the specified learner.
      */
     private static function verifyLearnerAccess(int $userId, int $learnerId): void
@@ -881,11 +1162,58 @@ class SyncService
             }
         }
 
-        // 6. Learner Profile & Schedules (if learner specified)
+        // 6. Learners Profile
+        $stmt = $db->prepare('
+            SELECT 
+                l.learner_id,
+                l.parent_id,
+                l.class_id,
+                l.full_name,
+                l.date_of_birth,
+                l.gender,
+                l.avatar_url,
+                l.special_learning_needs,
+                l.special_needs_description,
+                l.enrolment_date,
+                l.status,
+                l.created_at,
+                c.class_name,
+                c.class_code,
+                c.level as class_level,
+                (SELECT COUNT(*) FROM learner_subjects ls WHERE ls.learner_id = l.learner_id AND ls.status = "active") as active_subjects_count
+            FROM learners l
+            JOIN classes c ON l.class_id = c.class_id
+            JOIN parents p ON l.parent_id = p.parent_id
+            WHERE p.user_id = :uid
+            ORDER BY l.created_at DESC
+        ');
+        $stmt->execute([':uid' => $userId]);
+        $learners = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $now = new \DateTime();
+        foreach ($learners as &$lrn) {
+            $lrn['special_learning_needs'] = (bool)$lrn['special_learning_needs'];
+            $lrn['active_subjects_count'] = (int)$lrn['active_subjects_count'];
+            if (!empty($lrn['date_of_birth'])) {
+                $dob = new \DateTime($lrn['date_of_birth']);
+                $lrn['age'] = $dob->diff($now)->y;
+            } else {
+                $lrn['age'] = null;
+            }
+        }
+        unset($lrn);
+
+        // 7. Schedules
         $schedules = [];
         if ($learnerId) {
             $stmt = $db->prepare('SELECT * FROM learning_schedules WHERE learner_id = :lid ORDER BY scheduled_date ASC');
             $stmt->execute([':lid' => $learnerId]);
+            $schedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } else if (!empty($learners)) {
+            $lIds = array_column($learners, 'learner_id');
+            $lInClause = implode(',', array_fill(0, count($lIds), '?'));
+            $stmt = $db->prepare("SELECT * FROM learning_schedules WHERE learner_id IN ({$lInClause}) ORDER BY scheduled_date ASC");
+            $stmt->execute($lIds);
             $schedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
@@ -898,6 +1226,7 @@ class SyncService
                 'classes' => $classes,
                 'terms' => $terms
             ],
+            'learners' => $learners,
             'subjects' => $subjects,
             'lessons' => $lessons,
             'guides' => $guides,
@@ -906,6 +1235,7 @@ class SyncService
             'options' => $options,
             'schedules' => $schedules,
             'counts' => [
+                'learners' => count($learners),
                 'subjects' => count($subjects),
                 'lessons' => count($lessons),
                 'guides' => count($guides),

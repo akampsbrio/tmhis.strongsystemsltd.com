@@ -4,13 +4,15 @@
  * Coordinates:
  * - Device heartbeat & UUID tracking
  * - Online / Offline network state detection with real HTTP heartbeats
+ * - Automatic background cache hydration for Learners, Lessons & Guides
  * - Multitab mutex / lock synchronization
  * - Transaction-safe queue processing & exponential retry
- * - Offline package downloader & local assessment runner
+ * - Offline package downloader & optimistic action handlers
  */
 const TMHIS_Sync = {
     deviceUuidKey: 'tmhis_device_uuid',
     syncInProgress: false,
+    hydrationInProgress: false,
     syncIntervalId: null,
     isOnlineState: navigator.onLine,
     listeners: [],
@@ -29,6 +31,7 @@ const TMHIS_Sync = {
             if (online && API.getToken()) {
                 this.registerDevice();
                 this.syncPendingQueue();
+                this.autoHydrate();
             }
         });
     },
@@ -49,6 +52,7 @@ const TMHIS_Sync = {
                 if (online) {
                     this.setOnlineState(true);
                     this.syncPendingQueue();
+                    this.autoHydrate();
                 }
             });
         });
@@ -122,6 +126,39 @@ const TMHIS_Sync = {
     },
 
     // ----------------------------------------------------
+    // Automatic Background Hydration (Ensures Offline Readiness)
+    // ----------------------------------------------------
+    async autoHydrate(force = false) {
+        if (this.hydrationInProgress) return;
+        if (!this.isOnlineState && !force) return;
+        if (!API.getToken()) return;
+
+        // Rate limit background hydration to once every 10 minutes unless forced
+        const lastHydration = localStorage.getItem('tmhis_last_auto_hydrate');
+        const now = Date.now();
+        if (!force && lastHydration && (now - Number(lastHydration)) < 600000) {
+            return;
+        }
+
+        this.hydrationInProgress = true;
+        console.log('[TMHIS Sync] Starting automatic background offline cache hydration...');
+
+        try {
+            // 1. Download comprehensive offline package for user & registered learners
+            const pkg = await this.downloadClassPackage();
+            if (pkg) {
+                localStorage.setItem('tmhis_last_auto_hydrate', String(now));
+                console.info(`[TMHIS Sync] Auto-hydrated ${pkg.counts?.learners || 0} learners, ${pkg.counts?.lessons || 0} lessons.`);
+            }
+        } catch (err) {
+            console.warn('[TMHIS Sync] Auto-hydration warning (graceful fallback):', err);
+        } finally {
+            this.hydrationInProgress = false;
+            this.updateOnlineBadge();
+        }
+    },
+
+    // ----------------------------------------------------
     // Mutex & Queue Synchronisation Engine
     // ----------------------------------------------------
     async syncPendingQueue(force = false) {
@@ -164,6 +201,16 @@ const TMHIS_Sync = {
                     const uuid = res.client_transaction_uuid;
                     if (res.success) {
                         await TMHIS_DB.markSyncItemStatus(uuid, 'synced', null, res.data);
+
+                        // If learner was created offline, update local temporary ID with real DB ID
+                        if (res.entity_type === 'learner_create' && res.data?.learner_id && res.data?.temp_id) {
+                            const tempLearner = await TMHIS_DB.get('learners', res.data.temp_id);
+                            if (tempLearner) {
+                                await TMHIS_DB.delete('learners', res.data.temp_id);
+                                tempLearner.learner_id = res.data.learner_id;
+                                await TMHIS_DB.saveLearner(tempLearner);
+                            }
+                        }
                     } else {
                         await TMHIS_DB.markSyncItemStatus(uuid, res.status || 'failed', res.error);
                     }
@@ -193,6 +240,67 @@ const TMHIS_Sync = {
     // ----------------------------------------------------
     // Offline Action Dispatchers (Optimistic Execution)
     // ----------------------------------------------------
+
+    // Learner Offline Registration
+    async registerLearner(learnerData) {
+        const txUuid = TMHIS_DB.generateUUID();
+        const payload = {
+            client_transaction_uuid: txUuid,
+            ...learnerData
+        };
+
+        if (!this.isOnlineState) {
+            console.log('[TMHIS Sync] Offline learner registration enqueued.');
+            const tempId = 'temp_' + Date.now();
+            const localLearner = {
+                ...learnerData,
+                learner_id: tempId,
+                status: 'active',
+                is_offline_draft: true,
+                created_at: new Date().toISOString()
+            };
+            await TMHIS_DB.saveLearner(localLearner);
+            await TMHIS_DB.enqueueSyncItem('learner_create', 'create', { ...payload, temp_id: tempId });
+            this.updateOnlineBadge();
+            return {
+                success: true,
+                offline: true,
+                queued: true,
+                data: localLearner,
+                message: 'Learner registered locally. Will sync with TMHIS cloud when connected.'
+            };
+        }
+
+        try {
+            const res = await API.post('/api/parent/learners', payload);
+            if (res && res.success && res.data) {
+                await TMHIS_DB.saveLearner(res.data);
+            }
+            return res;
+        } catch (err) {
+            console.warn('[TMHIS Sync] Online learner register failed, saving offline fallback:', err);
+            const tempId = 'temp_' + Date.now();
+            const localLearner = {
+                ...learnerData,
+                learner_id: tempId,
+                status: 'active',
+                is_offline_draft: true,
+                created_at: new Date().toISOString()
+            };
+            await TMHIS_DB.saveLearner(localLearner);
+            await TMHIS_DB.enqueueSyncItem('learner_create', 'create', { ...payload, temp_id: tempId });
+            this.updateOnlineBadge();
+            return {
+                success: true,
+                offline: true,
+                queued: true,
+                data: localLearner,
+                message: 'Connection interrupted. Learner saved locally and queued for synchronization.'
+            };
+        }
+    },
+
+    // Assessment Submission
     async submitAssessment(assessmentId, learnerId, answers, timeSpentSeconds = 0) {
         const txUuid = TMHIS_DB.generateUUID();
         const payload = {
@@ -205,10 +313,9 @@ const TMHIS_Sync = {
             answers: answers
         };
 
-        // If currently offline or if online call fails, enqueue to IndexedDB
         if (!this.isOnlineState) {
             console.log('[TMHIS Sync] Device is offline. Enqueuing assessment locally...');
-            const enqueued = await TMHIS_DB.enqueueSyncItem('assessment_submission', 'submit', payload, learnerId);
+            await TMHIS_DB.enqueueSyncItem('assessment_submission', 'submit', payload, learnerId);
             this.updateOnlineBadge();
             return {
                 offline: true,
@@ -219,7 +326,6 @@ const TMHIS_Sync = {
         }
 
         try {
-            // Try direct API first
             return await API.post(`/api/attempts/submit`, payload);
         } catch (err) {
             console.warn('[TMHIS Sync] Online submission failed, enqueuing offline item:', err);
@@ -234,6 +340,7 @@ const TMHIS_Sync = {
         }
     },
 
+    // Schedule Progress & Completion
     async recordScheduleProgress(scheduleId, lessonId, learnerId, status = 'completed', notes = '') {
         const txUuid = TMHIS_DB.generateUUID();
         const payload = {
@@ -301,18 +408,20 @@ const TMHIS_Sync = {
         const offlineBanner = document.getElementById('offline-banner');
 
         let pendingCount = 0;
+        let stats = null;
         try {
             const pending = await TMHIS_DB.getPendingSyncItems();
             pendingCount = pending.length;
+            stats = await TMHIS_DB.getStorageStats();
         } catch (e) {}
 
         if (offlineBanner) {
             if (!this.isOnlineState) {
                 offlineBanner.innerHTML = `
                     <div class="offline-banner-alert">
-                        <span>📡 <strong>Offline Mode Active</strong> — You can continue studying, viewing guides and completing assessments. Changes will sync automatically when connected.</span>
+                        <span>📡 <strong>Offline Mode Active</strong> — Viewing saved learners, lessons and teaching guides. Any activities will sync automatically upon reconnection.</span>
                         ${pendingCount > 0 ? `<span class="badge badge-warning" style="margin-left:8px;">${pendingCount} Pending Sync${pendingCount > 1 ? 's' : ''}</span>` : ''}
-                        <button class="btn btn-sm btn-secondary" onclick="App.openOfflineCenterModal()" style="margin-left:12px; padding:2px 8px; font-size:0.75rem;">Manage Sync</button>
+                        <button class="btn btn-sm btn-secondary" onclick="App.openOfflineCenterModal()" style="margin-left:12px; padding:2px 8px; font-size:0.75rem;">Offline Center</button>
                     </div>
                 `;
                 offlineBanner.style.display = 'block';
@@ -323,6 +432,7 @@ const TMHIS_Sync = {
         }
 
         if (badge) {
+            const cachedInfo = stats ? ` (${stats.counts.learners} learners, ${stats.counts.lessons} lessons cached)` : '';
             if (isSyncing || this.syncInProgress) {
                 badge.className = 'connectivity-pill syncing';
                 badge.innerHTML = `<span>🔄</span> <span>Syncing...</span>`;
@@ -330,11 +440,11 @@ const TMHIS_Sync = {
             } else if (!this.isOnlineState) {
                 badge.className = 'connectivity-pill offline';
                 badge.innerHTML = `<span>🟠</span> <span>Offline</span> ${pendingCount > 0 ? `<span class="pill-counter">${pendingCount}</span>` : ''}`;
-                badge.title = 'You are currently offline. Click to open Offline Center.';
+                badge.title = `You are currently offline.${cachedInfo} Click to open Offline Center.`;
             } else {
                 badge.className = 'connectivity-pill online';
                 badge.innerHTML = `<span>🟢</span> <span>Online</span> ${pendingCount > 0 ? `<span class="pill-counter pending">${pendingCount}</span>` : ''}`;
-                badge.title = pendingCount > 0 ? `${pendingCount} items waiting to sync. Click to sync now.` : 'Connected to TMHIS Cloud.';
+                badge.title = pendingCount > 0 ? `${pendingCount} items waiting to sync. Click to sync now.` : `Connected to TMHIS Cloud.${cachedInfo}`;
             }
         }
     }

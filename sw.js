@@ -7,7 +7,7 @@
  * 2. When Offline: Automatically fall back to the cached copy of the application shell.
  */
 
-const CACHE_NAME = 'tmhis-shell-v51';
+const CACHE_NAME = 'tmhis-shell-v53';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -23,6 +23,27 @@ const STATIC_ASSETS = [
     '/js/app.js',
     '/manifest.json'
 ];
+
+// Helper: fetch with strict timeout
+function fetchWithTimeout(request, timeoutMs = 2500) {
+    return new Promise((resolve, reject) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => {
+            controller.abort();
+            reject(new Error('Network timeout'));
+        }, timeoutMs);
+
+        fetch(request, { signal: controller.signal })
+            .then(res => {
+                clearTimeout(timer);
+                resolve(res);
+            })
+            .catch(err => {
+                clearTimeout(timer);
+                reject(err);
+            });
+    });
+}
 
 // Install Event: Pre-cache App Shell & activate immediately
 self.addEventListener('install', (event) => {
@@ -51,7 +72,7 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Fetch Event: Network-First for online devices, Cache-Fallback when offline
+// Fetch Event: Fast-Network with Instant Offline Fallback
 self.addEventListener('fetch', (event) => {
     const request = event.request;
     const requestUrl = new URL(request.url);
@@ -61,10 +82,26 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 1. API requests: Direct network with offline JSON status fallback
+    // 1. API requests: Instant offline response if offline, or fast 2500ms timeout
     if (requestUrl.pathname.startsWith('/api/')) {
+        // If browser reports offline, don't even attempt network
+        if (!navigator.onLine) {
+            event.respondWith(
+                new Response(JSON.stringify({
+                    success: false,
+                    data: null,
+                    message: 'Device is offline. Served by local store.',
+                    errors: ['offline_mode']
+                }), {
+                    headers: { 'Content-Type': 'application/json' },
+                    status: 503
+                })
+            );
+            return;
+        }
+
         event.respondWith(
-            fetch(request).catch(() => {
+            fetchWithTimeout(request, 2500).catch(() => {
                 return new Response(JSON.stringify({
                     success: false,
                     data: null,
@@ -79,12 +116,21 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 2. Navigation & App Shell Assets (HTML, CSS, JS): NETWORK-FIRST
-    // When connected to the network, ALWAYS load the updated copy from the server first!
+    // 2. Navigation & App Shell Assets (HTML, CSS, JS): Fast network with instant cache fallback
     event.respondWith(
-        fetch(request)
-            .then((networkResponse) => {
-                // If received valid response from network, update cache with fresh asset
+        (async () => {
+            // If offline, serve directly from cache immediately
+            if (!navigator.onLine) {
+                const cached = await caches.match(request);
+                if (cached) return cached;
+                if (request.headers.get('accept')?.includes('text/html') || request.mode === 'navigate') {
+                    const indexCached = await caches.match('/index.html');
+                    if (indexCached) return indexCached;
+                }
+            }
+
+            try {
+                const networkResponse = await fetchWithTimeout(request, 2500);
                 if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
                     const responseClone = networkResponse.clone();
                     caches.open(CACHE_NAME).then((cache) => {
@@ -92,16 +138,13 @@ self.addEventListener('fetch', (event) => {
                     });
                 }
                 return networkResponse;
-            })
-            .catch(async () => {
-                // Network unavailable (Device is offline or disconnected) -> Fallback to Cache
-                console.warn('[TMHIS SW] Device is offline. Serving resource from local cache:', request.url);
+            } catch (err) {
+                // Fallback to cache immediately
                 const cachedResponse = await caches.match(request);
                 if (cachedResponse) {
                     return cachedResponse;
                 }
 
-                // If navigation request and not in cache, fallback to root index.html
                 if (request.headers.get('accept')?.includes('text/html') || request.mode === 'navigate') {
                     const indexCached = await caches.match('/index.html');
                     if (indexCached) {
@@ -114,6 +157,7 @@ self.addEventListener('fetch', (event) => {
                     statusText: 'Service Unavailable',
                     headers: { 'Content-Type': 'text/plain' }
                 });
-            })
+            }
+        })()
     );
 });

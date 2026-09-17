@@ -1822,14 +1822,37 @@ const App = {
 
         try {
             const [learnersRes, classes] = await Promise.all([
-                API.get('/api/parent/learners'),
-                this.fetchClasses()
+                API.get('/api/parent/learners').catch(() => ({ data: [] })),
+                this.fetchClasses().catch(() => [])
             ]);
 
-            this.cachedLearners = learnersRes.data || [];
+            let learners = Array.isArray(learnersRes.data) ? learnersRes.data : (learnersRes.data?.learners || []);
+            
+            // If empty and offline or error, try direct IndexedDB lookup
+            if (learners.length === 0 && typeof TMHIS_DB !== 'undefined' && TMHIS_DB.getLearners) {
+                const dbLearners = await TMHIS_DB.getLearners();
+                if (dbLearners && dbLearners.length > 0) {
+                    learners = dbLearners;
+                }
+            }
+
+            this.cachedLearners = learners;
             this.updateLearnerStats(this.cachedLearners);
-            this.renderLearnersGrid(this.cachedLearners);
+            this.renderLearnersGrid(this.cachedLearners, !navigator.onLine || learnersRes.offline);
         } catch (err) {
+            // Last resort: check TMHIS_DB
+            try {
+                if (typeof TMHIS_DB !== 'undefined' && TMHIS_DB.getLearners) {
+                    const dbLearners = await TMHIS_DB.getLearners();
+                    if (dbLearners && dbLearners.length > 0) {
+                        this.cachedLearners = dbLearners;
+                        this.updateLearnerStats(this.cachedLearners);
+                        this.renderLearnersGrid(this.cachedLearners, true);
+                        return;
+                    }
+                }
+            } catch (e) {}
+
             gridBox.innerHTML = `
                 <div class="alert alert-danger" style="margin-top:1rem;">
                     Failed to load learners: ${this.escapeHtml(err.message)}
@@ -1855,7 +1878,7 @@ const App = {
         if (statNeeds) statNeeds.innerText = specialNeeds;
     },
 
-    renderLearnersGrid(learners) {
+    renderLearnersGrid(learners, isOffline = false) {
         const gridBox = document.getElementById('learners-grid-container');
         if (!gridBox) return;
 
@@ -1873,6 +1896,13 @@ const App = {
             return;
         }
 
+        const offlineHeader = isOffline ? `
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.2rem; padding:0.6rem 1rem; background:#f8fafc; border-radius:8px; border-left:4px solid #f59e0b; font-size:0.85rem; color:#475569;">
+                <span>📡 <strong>Offline Mode:</strong> Displaying ${learners.length} home learner${learners.length > 1 ? 's' : ''} saved in local storage.</span>
+                <span class="badge" style="background:#fef3c7; color:#b45309; font-weight:600;">Offline Cache</span>
+            </div>
+        ` : '';
+
         const cardsHtml = learners.map(l => {
             const classCode = l.class_code || 'P1';
             const classClass = `class-${classCode.toLowerCase()}`;
@@ -1880,6 +1910,7 @@ const App = {
             const ageDisplay = l.age !== null ? `${l.age} years old` : '—';
             const dobFormatted = l.date_of_birth ? new Date(l.date_of_birth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
             const isInactive = l.status === 'inactive';
+            const isTemp = String(l.learner_id).startsWith('temp_') || l.is_offline_draft;
             const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(l.full_name || 'Learner')}&background=${isFemale ? 'ec4899' : '2563eb'}&color=fff&rounded=true&bold=true&size=128`;
             const photoUrl = l.avatar_url || fallbackAvatar;
 
@@ -1887,7 +1918,7 @@ const App = {
                 <div class="learner-card" style="${isInactive ? 'opacity:0.75; filter:grayscale(0.3);' : ''}">
                     <div>
                         <div class="learner-card-header">
-                            <div class="learner-avatar-wrapper" onclick="App.triggerLearnerPhotoUpload(${l.learner_id})" title="Click to upload/change photo for ${this.escapeHtml(l.full_name)}">
+                            <div class="learner-avatar-wrapper" onclick="App.triggerLearnerPhotoUpload('${l.learner_id}')" title="Click to upload/change photo for ${this.escapeHtml(l.full_name)}">
                                 <img src="${this.escapeHtml(photoUrl)}" 
                                      alt="${this.escapeHtml(l.full_name)}" 
                                      class="learner-avatar-img"
@@ -1900,6 +1931,7 @@ const App = {
                                     <span class="class-badge ${classClass}">${this.escapeHtml(l.class_name || classCode)}</span>
                                     <span class="status-badge status-${l.status || 'active'}">${l.status || 'active'}</span>
                                     ${l.special_learning_needs ? `<span class="needs-badge" title="${this.escapeHtml(l.special_needs_description || 'Special Needs Accommodation')}">♿ Accommodated</span>` : ''}
+                                    ${isTemp ? `<span class="badge" style="background:#fed7aa; color:#9a3412; font-size:0.75rem; font-weight:600;">⏳ Pending Sync</span>` : ''}
                                 </div>
                             </div>
                         </div>
@@ -2204,12 +2236,12 @@ const App = {
         alertBox.innerHTML = '';
 
         try {
-            const res = await API.post('/api/parent/learners', payload);
-            const newLearnerId = res.data?.learner?.learner_id;
+            const res = await TMHIS_Sync.registerLearner(payload);
+            const newLearnerId = res.data?.learner?.learner_id || res.data?.learner_id;
 
-            // If a photo file was selected, upload it immediately
+            // If a photo file was selected and online, upload it immediately
             const photoFile = document.getElementById('reg-photo-file')?.files[0];
-            if (photoFile && newLearnerId) {
+            if (photoFile && newLearnerId && !String(newLearnerId).startsWith('temp_')) {
                 try {
                     await this.uploadStudentPhotoFile(newLearnerId, photoFile);
                 } catch (photoErr) {
@@ -2219,7 +2251,7 @@ const App = {
 
             this.closeRegisterLearnerModal();
             await this.loadParentLearners();
-            alert(res.message || 'Child registered successfully!');
+            this.showToast(res.message || 'Child registered successfully!', 'success');
         } catch (err) {
             alertBox.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
         } finally {
@@ -2757,9 +2789,19 @@ const App = {
         try {
             const status = this.curriculumState.statusFilter || 'active';
             const search = this.curriculumState.searchTerm || '';
-            const res = await API.get(`/api/curriculum/subjects/${subjectId}/lessons?status=${status}&search=${encodeURIComponent(search)}`);
-            const data = res.data || {};
-            this.curriculumState.lessons = data.lessons || [];
+            let res = await API.get(`/api/curriculum/subjects/${subjectId}/lessons?status=${status}&search=${encodeURIComponent(search)}`).catch(() => ({ data: { lessons: [] } }));
+            let data = res.data || {};
+            let lessons = data.lessons || [];
+
+            // If empty and offline, try direct IndexedDB lookup
+            if (lessons.length === 0 && typeof TMHIS_DB !== 'undefined' && TMHIS_DB.getLessons) {
+                const dbLessons = await TMHIS_DB.getLessons(subjectId);
+                if (dbLessons && dbLessons.length > 0) {
+                    lessons = dbLessons;
+                }
+            }
+
+            this.curriculumState.lessons = lessons;
 
             if (this.curriculumState.lessons.length === 0) {
                 lessonsContainer.innerHTML = `
@@ -2775,8 +2817,16 @@ const App = {
             const role = Auth.getRole();
             const isStaff = ['curriculum_officer', 'administrator'].includes(role);
             const total = this.curriculumState.lessons.length;
+            const isOffline = !navigator.onLine || res.offline;
 
-            lessonsContainer.innerHTML = this.curriculumState.lessons.map((lesson, idx) => `
+            const offlineBanner = isOffline ? `
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; padding:0.5rem 0.9rem; background:#f8fafc; border-radius:6px; border-left:4px solid #3b82f6; font-size:0.82rem; color:#475569;">
+                    <span>📡 <strong>Offline Mode:</strong> Showing ${total} sequenced lessons loaded from local cache.</span>
+                    <span class="badge" style="background:#dbeafe; color:#1d4ed8; font-weight:600;">Offline Cache</span>
+                </div>
+            ` : '';
+
+            const listHtml = this.curriculumState.lessons.map((lesson, idx) => `
                 <div class="lesson-item-card ${lesson.status === 'retired' ? 'retired' : ''}" id="lesson-card-${lesson.lesson_id}">
                     <div class="lesson-seq-indicator">#${lesson.sequence_number}</div>
                     <div class="lesson-body">
@@ -2808,8 +2858,13 @@ const App = {
                 </div>
             `).join('');
 
+            lessonsContainer.innerHTML = offlineBanner + listHtml;
         } catch (err) {
-            lessonsContainer.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(err.message)}</div>`;
+            lessonsContainer.innerHTML = `
+                <div class="alert alert-danger" style="margin-top:1rem;">
+                    Failed to load lessons: ${this.escapeHtml(err.message)}
+                </div>
+            `;
         }
     },
 
