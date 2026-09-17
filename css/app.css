@@ -643,7 +643,9 @@ table.data-table tr:hover {
     flex-shrink: 0;
 }
 
-.modal-body {
+.modal-body,
+.modal-box > form,
+.modal-card > form {
     padding: 1.5rem;
     overflow-y: auto;
     flex: 1;

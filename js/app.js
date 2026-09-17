@@ -1790,11 +1790,11 @@ const App = {
                         <h3>🔑 Create Student Login</h3>
                         <button class="close-btn" onclick="App.closeCreateStudentLoginModal()">&times;</button>
                     </div>
-                    <div id="learner-login-alert"></div>
-                    <form onsubmit="App.handleCreateStudentLogin(event)">
+                    <form onsubmit="App.handleCreateStudentLogin(event)" style="padding: 1.5rem; overflow-y: auto;">
+                        <div id="learner-login-alert"></div>
                         <input type="hidden" id="student-login-learner-id">
-                        <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1rem;">
-                            Set up a standalone student account for <strong id="student-login-child-name">Child</strong> so they can log in independently to take quizzes and read lessons.
+                        <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1.25rem; line-height: 1.5;">
+                            Set up a standalone student account for <strong id="student-login-child-name" style="color:var(--text-main);">Child</strong> so they can log in independently to take quizzes and read lessons.
                         </p>
                         <div class="form-group">
                             <label for="student-login-username">Student Username *</label>
@@ -1804,7 +1804,7 @@ const App = {
                             <label for="student-login-password">Student Password *</label>
                             <input type="password" id="student-login-password" class="form-control" placeholder="••••••••" required minlength="6">
                         </div>
-                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:1.2rem;">
+                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:1.5rem;">
                             <button type="button" class="btn btn-secondary" onclick="App.closeCreateStudentLoginModal()">Cancel</button>
                             <button type="submit" class="btn btn-primary" id="btn-save-student-login">Create Student Account</button>
                         </div>
