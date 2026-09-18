@@ -81,8 +81,7 @@ class MessageService
                 r_other.role_code AS other_role_code,
                 r_other.role_name AS other_role_name,
                 subj.subject_name,
-                l.first_name AS learner_first_name,
-                l.last_name AS learner_last_name,
+                l.full_name AS learner_name,
                 (
                     SELECT COUNT(*) 
                     FROM messages m 
@@ -255,8 +254,7 @@ class MessageService
                 u_recip.username AS recipient_username,
                 r_recip.role_code AS recipient_role,
                 subj.subject_name,
-                l.first_name AS learner_first_name,
-                l.last_name AS learner_last_name
+                l.full_name AS learner_name
             FROM message_threads t
             LEFT JOIN users u_creator ON t.creator_user_id = u_creator.user_id
             LEFT JOIN roles r_creator ON u_creator.role_id = r_creator.role_id
@@ -426,12 +424,13 @@ class MessageService
         $params = [':uid' => $currentUserId];
 
         if (!empty($query)) {
-            $where[] = '(u.full_name LIKE :s1 OR u.username LIKE :s2 OR u.email LIKE :s3 OR r.role_name LIKE :s4)';
+            $where[] = '(u.full_name LIKE :s1 OR u.username LIKE :s2 OR u.email LIKE :s3 OR r.role_name LIKE :s4 OR r.role_code LIKE :s5)';
             $searchVal = '%' . trim($query) . '%';
             $params[':s1'] = $searchVal;
             $params[':s2'] = $searchVal;
             $params[':s3'] = $searchVal;
             $params[':s4'] = $searchVal;
+            $params[':s5'] = $searchVal;
         }
 
         $whereSql = implode(' AND ', $where);
@@ -466,11 +465,15 @@ class MessageService
             SELECT COUNT(*) 
             FROM messages m
             JOIN message_threads t ON m.thread_id = t.thread_id
-            WHERE (t.creator_user_id = :uid OR t.recipient_user_id = :uid)
-              AND m.sender_user_id != :uid
+            WHERE (t.creator_user_id = :uid1 OR t.recipient_user_id = :uid2)
+              AND m.sender_user_id != :uid3
               AND (m.read_at IS NULL OR m.status = 'sent')
         ");
-        $stmt->execute([':uid' => $userId]);
+        $stmt->execute([
+            ':uid1' => $userId,
+            ':uid2' => $userId,
+            ':uid3' => $userId
+        ]);
 
         return (int)$stmt->fetchColumn();
     }

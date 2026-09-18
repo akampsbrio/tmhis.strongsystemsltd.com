@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-//config file here
+//config file here here
 namespace App\Config;
 
 return [

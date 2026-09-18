@@ -131,10 +131,13 @@ class MessageController
     {
         $user = AuthMiddleware::handle();
         $userId = (int)$user['user_id'];
-        $search = $query['search'] ?? null;
+        $search = $query['q'] ?? $query['search'] ?? $query['query'] ?? null;
 
         $recipients = $this->messageService->getRecipientsDirectory($userId, $search);
-        Response::success($recipients, 'Recipients directory retrieved successfully.');
+        Response::success([
+            'recipients' => $recipients,
+            'total' => count($recipients)
+        ], 'Recipients directory retrieved successfully.');
     }
 
     /**

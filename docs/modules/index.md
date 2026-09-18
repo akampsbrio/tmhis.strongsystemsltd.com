@@ -13,6 +13,6 @@ This directory contains technical guides and tracking for each module derived fr
 - [**Module 08 — Progress Tracking & Role-Based Dashboards**](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/08_progress_dashboards.md) *(Completed & Verified — 32/32 tests)*
 - [**Module 09 — Reporting & Compliance Analytics**](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/09_reporting_and_compliance.md) *(Completed & Verified — 32/32 tests)*
 - [**Module 10 — Notifications, Alerts & MoES Statutory Circulars Engine**](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/10_notifications.md) *(Completed & Verified — 23/23 tests)*
-- **Module 11 — Messaging & Curriculum Inquiries** *(Upcoming - Sprint 11)*
+- [**Module 11 — Universal Direct Messaging & Transparent Read Receipts Engine**](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/11_messaging_communication.md) *(Completed & Verified — 23/23 tests)*
 - [**Module 12 — Administration, Security Audit Trail & System Health Engine**](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/12_audit_admin_system.md) *(Completed & Verified — 22/22 tests)*
 - **Module 13 — Testing, Validation & Dissertation Evidence** *(Upcoming - Sprint 13)*

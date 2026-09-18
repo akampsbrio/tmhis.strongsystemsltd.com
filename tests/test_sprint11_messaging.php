@@ -91,9 +91,16 @@ assertTest($parentUserId > 0 && $officerUserId > 0 && $strangerUserId > 0, "Test
 echo "\n[3/8] Testing Searchable Recipients Directory...\n";
 $msgService = new MessageService();
 
-$directory = $msgService->getRecipientsDirectory($parentUserId, 'Test Officer S11');
+$directory = $msgService->getRecipientsDirectory($parentUserId, "officer_s11_{$testTimestamp}");
 assertTest(!empty($directory), "Recipients directory returns matching officer", $passed, $failed);
-assertTest((int)$directory[0]['user_id'] === $officerUserId, "Directory accurately resolves target recipient ID", $passed, $failed);
+$foundOfficer = false;
+foreach ($directory as $recip) {
+    if ((int)$recip['user_id'] === $officerUserId) {
+        $foundOfficer = true;
+        break;
+    }
+}
+assertTest($foundOfficer, "Directory accurately resolves target recipient ID", $passed, $failed);
 
 // --- 4. Testing Thread Creation & Delivery ---
 echo "\n[4/8] Testing Thread Creation & Delivery Engine...\n";

@@ -44,8 +44,10 @@ const App = {
             Auth.refreshProfile().then(() => {
                 this.renderHeader();
                 if (typeof NotificationsApp !== 'undefined') NotificationsApp.init();
+                if (typeof MessagesApp !== 'undefined') MessagesApp.init();
             });
             if (typeof NotificationsApp !== 'undefined') NotificationsApp.init();
+            if (typeof MessagesApp !== 'undefined') MessagesApp.init();
         }
         window.addEventListener('hashchange', () => this.route());
         window.addEventListener('click', (e) => {
@@ -71,6 +73,12 @@ const App = {
                 <a href="javascript:void(0)" id="tmhis-connectivity-badge" class="connectivity-pill online" onclick="App.openOfflineCenterModal()" style="margin-right:8px;">
                     <span>🟢</span> <span>Online</span>
                 </a>
+                <div class="message-wrapper" style="position:relative; margin-right:8px;">
+                    <a href="#messages" id="header-messages-btn" class="btn-icon" style="background:#f1f5f9; border:1px solid #e2e8f0; border-radius:50%; width:38px; height:38px; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; font-size:1.1rem; outline:none; text-decoration:none;" title="Messages & Direct Communication">
+                        💬
+                        <span id="header-messages-badge" style="display:none; position:absolute; top:-4px; right:-4px; background:#2563eb; color:#fff; font-size:0.68rem; font-weight:800; padding:0.15rem 0.38rem; border-radius:10px; border:2px solid #fff; line-height:1;">0</span>
+                    </a>
+                </div>
                 <div class="notif-wrapper" style="position:relative; margin-right:8px;">
                     <button id="header-notif-bell" class="btn-icon" style="background:#f1f5f9; border:1px solid #e2e8f0; border-radius:50%; width:38px; height:38px; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; font-size:1.1rem; outline:none;" onclick="if(typeof NotificationsApp !== 'undefined') NotificationsApp.togglePopover(event)" title="Notifications & Alerts">
                         🔔
@@ -93,6 +101,9 @@ const App = {
                         <div class="dropdown-body">
                             <a href="${defaultDash}" class="dropdown-item" onclick="App.closeUserDropdown()">
                                 <span>📊</span> My Dashboard
+                            </a>
+                            <a href="#messages" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                <span>💬</span> Messages & Inbox
                             </a>
                             <a href="#notifications" class="dropdown-item" onclick="App.closeUserDropdown()">
                                 <span>🔔</span> Notification Center
@@ -395,11 +406,17 @@ const App = {
             } else {
                 content.innerHTML = '<div class="card p-4 text-center"><h3>Compliance module loading...</h3></div>';
             }
-        } else if (currentHash === '#notifications' || currentHash === '#inbox' || currentHash === '#alerts' || currentHash === '#circulars') {
+        } else if (currentHash === '#notifications' || currentHash === '#alerts' || currentHash === '#circulars') {
             if (typeof NotificationsApp !== 'undefined') {
                 NotificationsApp.initNotificationCenter(content);
             } else {
                 content.innerHTML = '<div class="card p-4 text-center"><h3>Notifications module loading...</h3></div>';
+            }
+        } else if (currentHash === '#messages' || currentHash === '#direct-messages' || currentHash === '#chat' || currentHash === '#inbox' || currentHash.startsWith('#messages?')) {
+            if (typeof MessagesApp !== 'undefined') {
+                MessagesApp.initMessagesCenter(content);
+            } else {
+                content.innerHTML = '<div class="card p-4 text-center"><h3>Messages module loading...</h3></div>';
             }
         } else if (currentHash === '#officer-broadcasts' || currentHash === '#broadcasts') {
             if (typeof NotificationsApp !== 'undefined') {
