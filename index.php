@@ -35,6 +35,7 @@ use App\Controllers\SyncController;
 use App\Controllers\ProgressController;
 use App\Controllers\ReportController;
 use App\Controllers\NotificationController;
+use App\Controllers\MessageController;
 use App\Controllers\AuditController;
 use App\Controllers\SystemHealthController;
 use App\Utils\Response;
@@ -227,6 +228,14 @@ $router->post('/api/notifications/{id}/dismiss', [NotificationController::class,
 $router->post('/api/officer/notifications/broadcast', [NotificationController::class, 'broadcast']);
 $router->get('/api/officer/notifications/broadcasts', [NotificationController::class, 'getBroadcasts']);
 $router->post('/api/notifications/evaluate-pacing', [NotificationController::class, 'evaluatePacing']);
+
+// Module 11: Universal In-App Messaging & Transparent Read Receipts Routes
+$router->get('/api/messages/threads', [MessageController::class, 'getThreads']);
+$router->post('/api/messages/threads', [MessageController::class, 'createThread']);
+$router->get('/api/messages/threads/{id}', [MessageController::class, 'getThread']);
+$router->post('/api/messages/threads/{id}/messages', [MessageController::class, 'sendReply']);
+$router->get('/api/messages/recipients', [MessageController::class, 'getRecipients']);
+$router->get('/api/messages/unread-count', [MessageController::class, 'getUnreadCount']);
 
 // Module 12: Administration, Security Audit Trail & System Health Routes
 $router->get('/api/admin/audit', [AuditController::class, 'list']);

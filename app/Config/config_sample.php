@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 namespace App\Config;
-
+####### ----------RENAME THIS FILE TO CONFIG ----------######
 return [
     'app' => [
         'name' => 'TMHIS - Technology-Mediated Homeschooling Information System',
