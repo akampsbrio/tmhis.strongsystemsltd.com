@@ -1,4 +1,4 @@
 /.htaccess
 /.well-known
 /TMHIS_Antigravity_Plan
-/app/Config/config.php
+app/Config/config.php

@@ -27,8 +27,11 @@ class MessageService
         $db = Database::getConnection();
         $offset = max(0, ($page - 1) * $limit);
 
-        $where = ['(t.creator_user_id = :uid OR t.recipient_user_id = :uid)'];
-        $params = [':uid' => $userId];
+        $where = ['(t.creator_user_id = :uid_c OR t.recipient_user_id = :uid_r)'];
+        $params = [
+            ':uid_c' => $userId,
+            ':uid_r' => $userId
+        ];
 
         if ($status !== 'all' && in_array($status, ['open', 'pending', 'resolved', 'closed'])) {
             $where[] = 't.status = :status';
@@ -49,11 +52,12 @@ class MessageService
         $countSql = "
             SELECT COUNT(*) 
             FROM message_threads t
-            LEFT JOIN users u_other ON u_other.user_id = CASE WHEN t.creator_user_id = :uid THEN t.recipient_user_id ELSE t.creator_user_id END
+            LEFT JOIN users u_other ON u_other.user_id = CASE WHEN t.creator_user_id = :uid_count THEN t.recipient_user_id ELSE t.creator_user_id END
             WHERE {$whereSql}
         ";
+        $countParams = array_merge($params, [':uid_count' => $userId]);
         $countStmt = $db->prepare($countSql);
-        $countStmt->execute($params);
+        $countStmt->execute($countParams);
         $totalThreads = (int)$countStmt->fetchColumn();
 
         $sql = "
@@ -69,7 +73,7 @@ class MessageService
                 t.last_message_preview,
                 t.is_important,
                 t.created_at,
-                CASE WHEN t.creator_user_id = :uid THEN t.recipient_user_id ELSE t.creator_user_id END AS other_user_id,
+                CASE WHEN t.creator_user_id = :uid_case1 THEN t.recipient_user_id ELSE t.creator_user_id END AS other_user_id,
                 u_other.full_name AS other_user_name,
                 u_other.username AS other_username,
                 u_other.email AS other_email,
@@ -83,11 +87,11 @@ class MessageService
                     SELECT COUNT(*) 
                     FROM messages m 
                     WHERE m.thread_id = t.thread_id 
-                      AND m.sender_user_id != :uid 
+                      AND m.sender_user_id != :uid_unread 
                       AND (m.read_at IS NULL OR m.status = 'sent')
                 ) AS unread_count
             FROM message_threads t
-            LEFT JOIN users u_other ON u_other.user_id = CASE WHEN t.creator_user_id = :uid THEN t.recipient_user_id ELSE t.creator_user_id END
+            LEFT JOIN users u_other ON u_other.user_id = CASE WHEN t.creator_user_id = :uid_case2 THEN t.recipient_user_id ELSE t.creator_user_id END
             LEFT JOIN roles r_other ON u_other.role_id = r_other.role_id
             LEFT JOIN subjects subj ON t.subject_id = subj.subject_id
             LEFT JOIN learners l ON t.learner_id = l.learner_id
@@ -96,8 +100,14 @@ class MessageService
             LIMIT :limit OFFSET :offset
         ";
 
+        $queryParams = array_merge($params, [
+            ':uid_case1' => $userId,
+            ':uid_case2' => $userId,
+            ':uid_unread' => $userId
+        ]);
+
         $stmt = $db->prepare($sql);
-        foreach ($params as $k => $v) {
+        foreach ($queryParams as $k => $v) {
             $stmt->bindValue($k, $v);
         }
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
