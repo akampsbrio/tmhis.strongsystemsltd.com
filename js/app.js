@@ -41,7 +41,11 @@ const App = {
         updateNetworkStatus();
         this.renderHeader();
         if (Auth.isAuthenticated()) {
-            Auth.refreshProfile().then(() => this.renderHeader());
+            Auth.refreshProfile().then(() => {
+                this.renderHeader();
+                if (typeof NotificationsApp !== 'undefined') NotificationsApp.init();
+            });
+            if (typeof NotificationsApp !== 'undefined') NotificationsApp.init();
         }
         window.addEventListener('hashchange', () => this.route());
         window.addEventListener('click', (e) => {
@@ -67,6 +71,13 @@ const App = {
                 <a href="javascript:void(0)" id="tmhis-connectivity-badge" class="connectivity-pill online" onclick="App.openOfflineCenterModal()" style="margin-right:8px;">
                     <span>🟢</span> <span>Online</span>
                 </a>
+                <div class="notif-wrapper" style="position:relative; margin-right:8px;">
+                    <button id="header-notif-bell" class="btn-icon" style="background:#f1f5f9; border:1px solid #e2e8f0; border-radius:50%; width:38px; height:38px; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; font-size:1.1rem; outline:none;" onclick="if(typeof NotificationsApp !== 'undefined') NotificationsApp.togglePopover(event)" title="Notifications & Alerts">
+                        🔔
+                        <span id="header-notif-badge" style="display:none; position:absolute; top:-4px; right:-4px; background:#ef4444; color:#fff; font-size:0.68rem; font-weight:800; padding:0.15rem 0.38rem; border-radius:10px; border:2px solid #fff; line-height:1;">0</span>
+                    </button>
+                    <div id="notif-dropdown-popover" style="display:none; position:absolute; right:0; top:46px; width:340px; background:#fff; border-radius:14px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1); border:1px solid #e2e8f0; z-index:1000;"></div>
+                </div>
                 <div class="user-menu-wrapper" id="user-menu-wrapper">
                     <button class="user-menu-btn" onclick="App.toggleUserDropdown(event)" title="${this.escapeHtml(displayName)} (${user.role_code})" type="button">
                         <img src="${this.escapeHtml(avatarUrl)}" alt="Avatar" class="user-avatar-img" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2563eb&color=fff&rounded=true'">
@@ -82,6 +93,9 @@ const App = {
                         <div class="dropdown-body">
                             <a href="${defaultDash}" class="dropdown-item" onclick="App.closeUserDropdown()">
                                 <span>📊</span> My Dashboard
+                            </a>
+                            <a href="#notifications" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                <span>🔔</span> Notification Center
                             </a>
                             <a href="#profile" class="dropdown-item" onclick="App.closeUserDropdown()">
                                 <span>👤</span> Profile & Password
@@ -131,6 +145,9 @@ const App = {
                                 <a href="#parent-exams" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📄</span> Termly Exam Sets & UNEB Grading
                                 </a>
+                                <a href="#parent-reports" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📊</span> Terminal & Family Reports
+                                </a>
                                 <a href="#offline-center" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>🔄</span> Offline Sync Status
                                 </a>
@@ -150,6 +167,9 @@ const App = {
                                 </a>
                                 <a href="#learner-exams" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📄</span> Termly Exam Sets
+                                </a>
+                                <a href="#learner-reports" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📊</span> Terminal Report Card
                                 </a>
                                 <a href="#offline-center" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📥</span> Saved Offline Lessons
@@ -177,6 +197,9 @@ const App = {
                                 <a href="#teacher-class-summary" class="dropdown-item" onclick="App.closeUserDropdown()">
                                     <span>📈</span> Class Progress
                                 </a>
+                                <a href="#teacher-reports" class="dropdown-item" onclick="App.closeUserDropdown()">
+                                    <span>📊</span> Class Reports & Diagnostics
+                                </a>
                             ` : ''}
                             ${user.role_code === 'curriculum_officer' ? `
                                 <a href="#curriculum-explorer" class="dropdown-item" onclick="App.closeUserDropdown()">
@@ -192,7 +215,7 @@ const App = {
                                     <span>📄</span> Exam Sets & PDF Releases
                                 </a>
                                 <a href="#officer-compliance" class="dropdown-item" onclick="App.closeUserDropdown()">
-                                    <span>📊</span> Compliance Reports
+                                    <span>📊</span> Compliance & National Reports
                                 </a>
                             ` : ''}
                             <div class="dropdown-divider"></div>
@@ -343,6 +366,58 @@ const App = {
             AssessmentsApp.init(content);
         } else if (currentHash === '#parent-exams' || currentHash === '#officer-exams' || currentHash === '#learner-exams' || currentHash === '#exams' || currentHash === '#exam-sets' || currentHash === '#grading') {
             ExamsApp.init(content);
+        } else if (currentHash.startsWith('#learner-reports') || currentHash.startsWith('#learner-report') || currentHash.startsWith('#report-card')) {
+            const urlParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+            const paramId = urlParams.get('id') || urlParams.get('learner_id') || null;
+            const hashPart = window.location.hash.split('?')[0];
+            const pathId = hashPart.includes('/') ? hashPart.split('/')[1] : null;
+            const lid = paramId ? parseInt(paramId) : (pathId && !isNaN(parseInt(pathId)) ? parseInt(pathId) : null);
+            if (typeof ReportsApp !== 'undefined') {
+                ReportsApp.initLearnerReportCard(content, lid);
+            } else {
+                content.innerHTML = '<div class="card p-4 text-center"><h3>Reporting module loading...</h3></div>';
+            }
+        } else if (currentHash === '#parent-reports' || currentHash === '#family-reports' || currentHash === '#parent-report-card') {
+            if (typeof ReportsApp !== 'undefined') {
+                ReportsApp.initParentFamilyReport(content);
+            } else {
+                content.innerHTML = '<div class="card p-4 text-center"><h3>Reporting module loading...</h3></div>';
+            }
+        } else if (currentHash === '#teacher-reports' || currentHash === '#class-reports' || currentHash === '#teacher-diagnostics') {
+            if (typeof ReportsApp !== 'undefined') {
+                ReportsApp.initTeacherClassReport(content);
+            } else {
+                content.innerHTML = '<div class="card p-4 text-center"><h3>Reporting module loading...</h3></div>';
+            }
+        } else if (currentHash === '#officer-compliance' || currentHash === '#officer-reports' || currentHash === '#compliance-dashboard' || currentHash === '#moes-compliance' || currentHash === '#benchmarks') {
+            if (typeof ReportsApp !== 'undefined') {
+                ReportsApp.initComplianceDashboard(content);
+            } else {
+                content.innerHTML = '<div class="card p-4 text-center"><h3>Compliance module loading...</h3></div>';
+            }
+        } else if (currentHash === '#notifications' || currentHash === '#inbox' || currentHash === '#alerts' || currentHash === '#circulars') {
+            if (typeof NotificationsApp !== 'undefined') {
+                NotificationsApp.initNotificationCenter(content);
+            } else {
+                content.innerHTML = '<div class="card p-4 text-center"><h3>Notifications module loading...</h3></div>';
+            }
+        } else if (currentHash === '#officer-broadcasts' || currentHash === '#broadcasts') {
+            if (typeof NotificationsApp !== 'undefined') {
+                NotificationsApp.initNotificationCenter(content);
+                NotificationsApp.openBroadcastModal();
+            }
+        } else if (currentHash === '#admin-audit' || currentHash === '#audit' || currentHash === '#security-logs' || currentHash === '#audit-trail') {
+            if (typeof AuditApp !== 'undefined') {
+                AuditApp.initAuditCenter(content);
+            } else {
+                content.innerHTML = '<div class="card p-4 text-center"><h3>Audit module loading...</h3></div>';
+            }
+        } else if (currentHash === '#admin-system-health' || currentHash === '#system-health' || currentHash === '#health-dashboard' || currentHash === '#telemetry') {
+            if (typeof AuditApp !== 'undefined') {
+                AuditApp.initSystemHealth(content);
+            } else {
+                content.innerHTML = '<div class="card p-4 text-center"><h3>System health module loading...</h3></div>';
+            }
         } else if (currentHash === '#offline-center' || currentHash === '#parent-sync' || currentHash === '#offline-manager' || currentHash === '#learner-downloads' || currentHash === '#sync-status') {
             this.renderOfflineCenter(content);
         } else {
@@ -1056,6 +1131,11 @@ const App = {
                         <h3>Learning Materials Review <span>📁</span></h3>
                         <p>Approve, version, and publish educational notes, worksheets, and media.</p>
                         <a href="#officer-materials" class="btn btn-secondary btn-sm">Review Materials</a>
+                    </div>
+                    <div class="card">
+                        <h3>Compliance & Attainment <span>📊</span></h3>
+                        <p>Track statutory MoES compliance, district attainment, and configure quality benchmarks.</p>
+                        <a href="#officer-compliance" class="btn btn-primary btn-sm">Compliance Dashboard</a>
                     </div>
                     <div class="card">
                         <h3>Assessments & Item Banks <span>✍️</span></h3>

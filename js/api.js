@@ -588,3 +588,6 @@ const API = {
         return null;
     }
 };
+
+window.API = API;
+window.Api = API;

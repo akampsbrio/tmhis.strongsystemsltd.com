@@ -33,6 +33,10 @@ use App\Controllers\AssessmentController;
 use App\Controllers\ExamController;
 use App\Controllers\SyncController;
 use App\Controllers\ProgressController;
+use App\Controllers\ReportController;
+use App\Controllers\NotificationController;
+use App\Controllers\AuditController;
+use App\Controllers\SystemHealthController;
 use App\Utils\Response;
 use App\Utils\Router;
 
@@ -202,6 +206,37 @@ $router->get('/api/progress/officer', [ProgressController::class, 'getOfficerAna
 $router->post('/api/progress/lesson', [ProgressController::class, 'updateLessonProgress']);
 $router->patch('/api/progress/lesson', [ProgressController::class, 'updateLessonProgress']);
 $router->post('/api/progress/activity', [ProgressController::class, 'recordActivity']);
+
+// Module 09: Reports, Analytics & MoES Compliance Routes
+$router->get('/api/reports/learner', [ReportController::class, 'getLearnerReport']);
+$router->get('/api/reports/learner/{id}', [ReportController::class, 'getLearnerReport']);
+$router->get('/api/reports/parent', [ReportController::class, 'getParentReport']);
+$router->get('/api/reports/class-summary', [ReportController::class, 'getClassSummaryReport']);
+$router->get('/api/reports/compliance', [ReportController::class, 'getComplianceReport']);
+$router->get('/api/reports/benchmarks', [ReportController::class, 'getBenchmarks']);
+$router->post('/api/reports/benchmarks', [ReportController::class, 'updateBenchmarks']);
+$router->get('/api/reports/snapshots/{uuid}', [ReportController::class, 'getSnapshot']);
+$router->get('/api/reports/{type}/export', [ReportController::class, 'exportReport']);
+
+// Module 10: Notifications, Alerts & MoES Statutory Circulars Routes
+$router->get('/api/notifications', [NotificationController::class, 'getNotifications']);
+$router->patch('/api/notifications/{id}/read', [NotificationController::class, 'markRead']);
+$router->post('/api/notifications/{id}/read', [NotificationController::class, 'markRead']);
+$router->post('/api/notifications/mark-all-read', [NotificationController::class, 'markAllRead']);
+$router->post('/api/notifications/{id}/dismiss', [NotificationController::class, 'dismiss']);
+$router->post('/api/officer/notifications/broadcast', [NotificationController::class, 'broadcast']);
+$router->get('/api/officer/notifications/broadcasts', [NotificationController::class, 'getBroadcasts']);
+$router->post('/api/notifications/evaluate-pacing', [NotificationController::class, 'evaluatePacing']);
+
+// Module 12: Administration, Security Audit Trail & System Health Routes
+$router->get('/api/admin/audit', [AuditController::class, 'list']);
+$router->get('/api/admin/audit/stats', [AuditController::class, 'stats']);
+$router->get('/api/admin/audit/export', [AuditController::class, 'export']);
+$router->get('/api/admin/audit/{id}', [AuditController::class, 'show']);
+$router->get('/api/admin/system/health', [SystemHealthController::class, 'getHealth']);
+$router->get('/api/admin/system/settings', [SystemHealthController::class, 'getSettings']);
+$router->patch('/api/admin/system/settings', [SystemHealthController::class, 'updateSetting']);
+$router->post('/api/admin/system/settings', [SystemHealthController::class, 'updateSetting']);
 
 // Dispatch router
 $router->dispatch();

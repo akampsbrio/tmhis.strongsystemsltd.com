@@ -54,8 +54,15 @@ The TMHIS database runs on **MySQL 8.0** with InnoDB engine, `utf8mb4_unicode_ci
 - `progress_records`: Atomic lesson completion states (`not_started`, `in_progress`, `completed`), time spent, and dates.
 - `lesson_observations`: Formative notes, parent feedback, and struggle diagnostic flags.
 
+### Reports, Snapshots & Compliance Benchmarks (Module 09)
+- `compliance_benchmarks`: Statutory quality and pacing thresholds (`min_coverage_percentage`, `min_pass_rate`, `min_study_hours`) per class/term or national default.
+- `report_snapshots`: Immutable, reproducible JSON payloads of official generated reports with unique UUIDs (`snapshot_uuid`).
+
+### Notifications, Alerts & Broadcasts (Module 10)
+- `notifications`: User-scoped alerts, lesson pacing reminders, statutory circulars, and system notices with `action_url`, `priority`, and `metadata_json`.
+- `notification_broadcasts`: Official circulars and directives published by Curriculum Officers with target role/class/district filters and reach metrics.
+
 ### Communication & Operations
-- `notifications`: In-app notification alerts.
 - `message_threads`: Two-way parent-officer communication.
 - `messages`: Individual messages within threads.
 - `message_attachments`: Uploaded message attachments.
@@ -78,3 +85,6 @@ Columns: `learner_id`, `subject_id`, `subject_name`, `assessment_count`, `total_
 
 ### `vw_learner_exam_summary`
 Computes termly UNEB division outcomes and aggregate scores per learner.
+
+### `vw_district_compliance_summary`
+Aggregates active learners, active parents, total expected lessons, completed lessons, average coverage %, average quiz %, total study hours, and at-risk learner counts grouped by district, class level, and class code for MoES statutory compliance monitoring.

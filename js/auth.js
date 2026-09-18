@@ -33,6 +33,10 @@ const Auth = {
         return !!this.getUser() && !!API.getToken();
     },
 
+    isLoggedIn() {
+        return this.isAuthenticated();
+    },
+
     getRole() {
         const user = this.getUser();
         return user ? user.role_code : null;

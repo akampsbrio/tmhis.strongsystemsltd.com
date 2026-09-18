@@ -421,5 +421,112 @@ All endpoints return JSON wrapped in the standard response envelope:
   ```
 - **Description:** Ingests material viewing heartbeats and reading time with client UUID idempotency.
 
+---
+
+## Module 09: Reports, Analytics & MoES Curriculum Compliance Endpoints
+
+### 30. Learner Official Terminal Report Card
+- **Endpoint:** `GET /api/reports/learner/{id}?term_id=1&year=2026`
+- **Headers:** `Authorization: Bearer <token>`
+- **Description:** Returns official terminal report card with syllabus progress breakdown, weighted quiz averages, UNEB PLE Division grade and total aggregate point calculation, pedagogical remarks, and snapshot UUID.
+
+### 31. Parent Multi-Child Family Consolidated Report
+- **Endpoint:** `GET /api/reports/parent?term_id=1&year=2026`
+- **Headers:** `Authorization: Bearer <parent_token>`
+- **Description:** Returns comparative progress audit across all children registered under the authenticated parent.
+
+### 32. Teacher Class Pacing & Diagnostic Summary
+- **Endpoint:** `GET /api/reports/class-summary?class_id=4&district=Wakiso&year=2026`
+- **Headers:** `Authorization: Bearer <teacher_token>`
+- **Description:** Returns class gradebook roster, at-risk learner detection, topic difficulty heatmap (<60% pass rate), and study hour metrics.
+
+### 33. MoES Student-by-Student Curriculum Compliance Audit
+- **Endpoint:** `GET /api/reports/compliance?class_id=4&class_level=6&year=2026&search=Grace`
+- **Headers:** `Authorization: Bearer <officer_or_teacher_token>`
+- **Description:** Evaluates active learners individually against statutory MoES syllabus coverage, quiz pass rates, and study hours benchmarks from `compliance_benchmarks`. Returns student compliance status, violation flags, and macro summary.
+
+### 34. List Compliance Quality Benchmarks
+- **Endpoint:** `GET /api/reports/benchmarks`
+- **Headers:** `Authorization: Bearer <officer_or_admin_token>`
+- **Description:** Returns active national and class-level quality benchmark targets.
+
+### 35. Configure Compliance Quality Benchmarks
+- **Endpoint:** `POST /api/reports/benchmarks`
+- **Headers:** `Authorization: Bearer <officer_or_admin_token>`
+- **Body:**
+  ```json
+  {
+    "min_coverage_percentage": 75.0,
+    "min_pass_rate": 55.0,
+    "min_study_hours": 30.0,
+    "class_id": 6,
+    "term_id": 1
+  }
+  ```
+- **Description:** Updates statutory quality thresholds in `compliance_benchmarks` and logs audit trail event.
+
+### 36. Raw CSV Report Data Export
+- **Endpoint:** `GET /api/reports/{type}/export?format=csv&id=14&class_id=4`
+- **Headers:** `Authorization: Bearer <token>`
+- **Description:** Streams raw formatted CSV output for learner terminal records, class diagnostics, or student-by-student compliance audits.
+
+### 37. Retrieve Immutable Report Snapshot
+- **Endpoint:** `GET /api/reports/snapshots/{uuid}`
+- **Headers:** `Authorization: Bearer <token>`
+- **Description:** Fetches historical reproducible report snapshot payload by immutable UUID.
+
+---
+
+## Module 10: Notifications, Alerts & MoES Statutory Circulars Endpoints
+
+### 38. Retrieve User Notifications
+- **Endpoint:** `GET /api/notifications?status=unread&type=circular&limit=20`
+- **Headers:** `Authorization: Bearer <token>`
+- **Description:** Returns paginated notifications and real-time unread badge count for the authenticated user.
+
+### 39. Mark Notification as Read
+- **Endpoint:** `PATCH /api/notifications/{id}/read`
+- **Headers:** `Authorization: Bearer <token>`
+- **Description:** Updates status of specified notification to `read` with timestamp.
+
+### 40. Mark All Notifications as Read
+- **Endpoint:** `POST /api/notifications/mark-all-read`
+- **Headers:** `Authorization: Bearer <token>`
+- **Description:** Bulk updates all unread notifications for authenticated user to `read`.
+
+### 41. Dismiss Notification
+- **Endpoint:** `POST /api/notifications/{id}/dismiss`
+- **Headers:** `Authorization: Bearer <token>`
+- **Description:** Hides/dismisses notification from active notification center view.
+
+### 42. Publish Statutory Circular Broadcast
+- **Endpoint:** `POST /api/officer/notifications/broadcast`
+- **Headers:** `Authorization: Bearer <officer_or_admin_token>`
+- **Body:**
+  ```json
+  {
+    "title": "MoES Term 1 Assessment Circular",
+    "message": "All homeschooling parents are requested to review continuous assessment marks before Week 10.",
+    "broadcast_type": "circular",
+    "target_role": "parent",
+    "target_class_id": 4,
+    "target_district": "Wakiso",
+    "priority": "high",
+    "action_url": "#schedule"
+  }
+  ```
+- **Description:** Dispatches official circular notification to targeted users and records broadcast delivery metrics with security audit logging.
+
+### 43. List Broadcast History
+- **Endpoint:** `GET /api/officer/notifications/broadcasts?limit=20`
+- **Headers:** `Authorization: Bearer <officer_or_admin_token>`
+- **Description:** Returns chronological log of published circulars with delivery and audience reach metrics.
+
+### 44. Evaluate Automated Pacing Reminders
+- **Endpoint:** `POST /api/notifications/evaluate-pacing`
+- **Headers:** `Authorization: Bearer <officer_or_admin_token>`
+- **Description:** Scans active learners for pacing delays (<50% coverage) and dispatches automated parent reminders idempotently.
+
+
 
 

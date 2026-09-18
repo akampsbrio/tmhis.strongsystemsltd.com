@@ -14,8 +14,14 @@ class RoleMiddleware
     {
         $user = AuthMiddleware::handle();
 
-        $userRole = $user['role_code'] ?? '';
-        if (!in_array($userRole, $allowedRoles, true)) {
+        $userRole = strtolower(str_replace(' ', '_', (string)($user['role_code'] ?? '')));
+        $normalizedAllowed = array_map(function($r) {
+            $nr = strtolower(str_replace(' ', '_', (string)$r));
+            if ($nr === 'super_admin' || $nr === 'admin') return 'administrator';
+            return $nr;
+        }, $allowedRoles);
+
+        if (!in_array($userRole, $normalizedAllowed, true)) {
             Response::forbidden("Access denied. Required role: " . implode(' or ', $allowedRoles));
         }
 
@@ -23,9 +29,29 @@ class RoleMiddleware
     }
 
     /**
-     * Alias for requireRoles
+     * Aliases for requireRoles
      */
+    public static function requireRole(array|string $allowedRoles): array
+    {
+        return self::requireRoles((array)$allowedRoles);
+    }
+
     public static function requireAny(array $allowedRoles): array
+    {
+        return self::requireRoles($allowedRoles);
+    }
+
+    public static function allow(array $allowedRoles): array
+    {
+        return self::requireRoles($allowedRoles);
+    }
+
+    public static function permit(array $allowedRoles): array
+    {
+        return self::requireRoles($allowedRoles);
+    }
+
+    public static function authorize(array $allowedRoles): array
     {
         return self::requireRoles($allowedRoles);
     }

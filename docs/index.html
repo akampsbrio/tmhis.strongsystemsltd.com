@@ -382,7 +382,9 @@
             <a href="#mod-06-1" class="nav-link" onclick="Docs.navigate('mod-06-1')">✅ 06.1. Exam Sets & UNEB Grading</a>
             <a href="#mod-07" class="nav-link" onclick="Docs.navigate('mod-07')">✅ 07. Offline PWA & Sync</a>
             <a href="#mod-08" class="nav-link" onclick="Docs.navigate('mod-08')">✅ 08. Progress Dashboards</a>
-            <a href="#mod-roadmap" class="nav-link" onclick="Docs.navigate('mod-roadmap')">⏳ 09–13. Sprints Roadmap</a>
+            <a href="#mod-09" class="nav-link" onclick="Docs.navigate('mod-09')">✅ 09. Reports & Compliance</a>
+            <a href="#mod-10" class="nav-link" onclick="Docs.navigate('mod-10')">✅ 10. Notifications & Circulars</a>
+            <a href="#mod-roadmap" class="nav-link" onclick="Docs.navigate('mod-roadmap')">⏳ 11–13. Sprints Roadmap</a>
             
             <div class="nav-group-title">Operations</div>
             <a href="#credentials" class="nav-link" onclick="Docs.navigate('credentials')">🔑 Demo Credentials</a>
@@ -1544,8 +1546,87 @@
 
             <h2 class="section-heading">3. Automated Test Suite</h2>
             <pre><code>php tests/test_sprint8_progress_dashboards.php</code></pre>
-            <p style="margin-top:0.5rem;">Cumulative regression runner across Sprints 0 through 8 (102/102 assertions passing):</p>
-            <pre><code>php tests/test_sprint0_sprint1.php && php tests/test_sprint2_learners.php && php tests/test_sprint3_curriculum.php && php tests/test_sprint4_materials.php && php tests/test_sprint5_guides_scheduling.php && php tests/test_sprint6_assessments_scoring.php && php tests/test_sprint6_1_exams_grading.php && php tests/test_sprint7_offline_sync.php && php tests/test_sprint8_progress_dashboards.php</code></pre>
+        </section>
+
+        <!-- SECTION: MODULE 09 -->
+        <section id="sec-mod-09" class="doc-section">
+            <h1 class="doc-title">Module 09: Reports, Analytics &amp; MoES Curriculum Compliance Engine</h1>
+            <p class="doc-subtitle">Official terminal report cards, parent family progress audits, teacher diagnostic heatmaps, and MoES statutory curriculum compliance monitoring</p>
+
+            <div class="callout">
+                <div class="callout-title">Module Status: ✅ Completed &amp; Verified (Sprint 9)</div>
+                <p>32/32 Module 09 tests passing &bull; 134/134 Cumulative regression tests passing (100% Green)</p>
+            </div>
+
+            <h2 class="section-heading">1. Core Reporting &amp; Compliance Engines</h2>
+            <div class="grid-2">
+                <div class="card">
+                    <h4>📄 Official Terminal Report Card</h4>
+                    <p>Syllabus completion metrics, weighted quiz averages, UNEB PLE Division 1–4 calculation with strict F9 demotion rule, aggregate points, and high-resolution A4 printable PDF generator.</p>
+                </div>
+                <div class="card">
+                    <h4>👨‍👩‍👧 Parent Family Consolidated Report</h4>
+                    <p>Multi-child progress audit across terms and academic years, logging total study hours and average syllabus pacing per child.</p>
+                </div>
+                <div class="card">
+                    <h4>👩‍🏫 Class Diagnostic &amp; Difficulty Heatmap</h4>
+                    <p>Class gradebook with automated at-risk learner detection (&lt;30% completion or &lt;50% score) and struggling topic difficulty heatmaps (&lt;60% pass rate).</p>
+                </div>
+                <div class="card">
+                    <h4>🏛️ MoES Student-by-Student Compliance Audit</h4>
+                    <p>Statutory curriculum attainment tracking per active student, live search/filter, individual threshold violation flags (coverage %, pass rate, study hours), quick report card links, and dynamic benchmark configuration.</p>
+                </div>
+            </div>
+
+            <h2 class="section-heading">2. UNEB PLE Division Grading Logic</h2>
+            <ul>
+                <li><strong>Division 1:</strong> 4 – 12 Aggregate points with 0 F9 grades in core subjects.</li>
+                <li><strong>Division 2:</strong> 13 – 24 Aggregate points with 0 F9 grades in core subjects.</li>
+                <li><strong>Division 3:</strong> 25 – 28 Aggregate points (or demoted from Div 1/2 due to F9 in core subject).</li>
+                <li><strong>Division 4:</strong> 29 – 32 Aggregate points.</li>
+                <li><strong>Division U:</strong> 33+ Aggregate points (Ungraded / Requires Revision).</li>
+            </ul>
+
+            <h2 class="section-heading">3. Automated Test Suite</h2>
+            <pre><code>php tests/test_sprint9_reporting_compliance.php</code></pre>
+            <p style="margin-top:0.5rem;">Cumulative regression runner across Sprints 0 through 9 (134/134 assertions passing):</p>
+            <pre><code>php tests/test_sprint0_sprint1.php && php tests/test_sprint2_learners.php && php tests/test_sprint3_curriculum.php && php tests/test_sprint4_materials.php && php tests/test_sprint5_guides_scheduling.php && php tests/test_sprint6_assessments_scoring.php && php tests/test_sprint6_1_exams_grading.php && php tests/test_sprint7_offline_sync.php && php tests/test_sprint8_progress_dashboards.php && php tests/test_sprint9_reporting_compliance.php</code></pre>
+        </section>
+
+        <!-- SECTION: MODULE 10 -->
+        <section id="sec-mod-10" class="doc-section">
+            <h1 class="doc-title">Module 10: Notifications, Alerts &amp; MoES Statutory Circulars Engine</h1>
+            <p class="doc-subtitle">Real-time alert polling, lesson pacing reminders, at-risk academic warnings, and targeted statutory circular broadcasts</p>
+
+            <div class="callout">
+                <div class="callout-title">Module Status: ✅ Completed &amp; Verified (Sprint 10)</div>
+                <p>23/23 Module 10 tests passing &bull; 15/15 Full Test Suites passing (100% Green)</p>
+            </div>
+
+            <h2 class="section-heading">1. Core Notification Capabilities</h2>
+            <div class="grid-2">
+                <div class="card">
+                    <h4>⏰ Lesson Pacing Reminders</h4>
+                    <p>Automated reminders dispatched when a learner falls behind expected timetable pacing (&lt;50% syllabus coverage) or has pending quiz submissions.</p>
+                </div>
+                <div class="card">
+                    <h4>⚠️ Academic &amp; At-Risk Alerts</h4>
+                    <p>High-priority alert triggers for low continuous assessment performance, prolonged inactivity, or offline sync conflicts.</p>
+                </div>
+                <div class="card">
+                    <h4>🏛️ MoES Statutory Circulars &amp; Directives</h4>
+                    <p>Official Ministry broadcast engine with audience targeting by Role (Parents, Teachers), Primary Class (P1–P7), and Ugandan District.</p>
+                </div>
+                <div class="card">
+                    <h4>🔔 Interactive Notification Center</h4>
+                    <p>Header bell badge with real-time counter, dropdown popover, full-screen inbox (<code>#notifications</code>), and deep-linking action routing.</p>
+                </div>
+            </div>
+
+            <h2 class="section-heading">2. Automated Test Suite</h2>
+            <pre><code>php tests/test_sprint10_notifications.php</code></pre>
+            <p style="margin-top:0.5rem;">Cumulative regression runner across Sprints 0 through 10:</p>
+            <pre><code>php tests/test_sprint0_sprint1.php && php tests/test_sprint2_learners.php && php tests/test_sprint3_curriculum.php && php tests/test_sprint4_materials.php && php tests/test_sprint5_guides_scheduling.php && php tests/test_sprint6_assessments_scoring.php && php tests/test_sprint6_1_exams_grading.php && php tests/test_sprint7_offline_sync.php && php tests/test_sprint8_progress_dashboards.php && php tests/test_sprint9_reporting_compliance.php && php tests/test_sprint10_notifications.php</code></pre>
         </section>
 
         <!-- SECTION: ROADMAP -->
@@ -1572,9 +1653,9 @@
                         <tr><td>Sprint 6</td><td>Module 06: Online &amp; Offline Assessments &amp; Server-Side Scoring</td><td><span class="badge badge-success">Completed</span></td></tr>
                         <tr><td>Sprint 7</td><td>Module 07: PWA Offline Architecture &amp; Synchronisation</td><td><span class="badge badge-success">Completed</span></td></tr>
                         <tr><td>Sprint 8</td><td>Module 08: Progress Tracking &amp; Dashboards</td><td><span class="badge badge-success">Completed</span></td></tr>
-                        <tr><td>Sprint 9</td><td>Module 09: Reporting &amp; Compliance Analytics</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
-                        <tr><td>Sprint 10</td><td>Module 10: In-App Notifications Engine</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
-                        <tr><td>Sprint 11</td><td>Module 11: Messaging &amp; Curriculum Circulars</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
+                        <tr><td>Sprint 9</td><td>Module 09: Reporting &amp; Compliance Analytics</td><td><span class="badge badge-success">Completed</span></td></tr>
+                        <tr><td>Sprint 10</td><td>Module 10: Notifications, Alerts &amp; MoES Circulars Engine</td><td><span class="badge badge-success">Completed</span></td></tr>
+                        <tr><td>Sprint 11</td><td>Module 11: Messaging &amp; Curriculum Inquiries</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
                         <tr><td>Sprint 12</td><td>Module 12: Audit Trail &amp; Technical Administration</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
                         <tr><td>Sprint 13</td><td>Module 13: Testing, Validation &amp; Dissertation Evidence</td><td><span class="badge badge-pending">Upcoming</span></td></tr>
                     </tbody>

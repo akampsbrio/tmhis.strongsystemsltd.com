@@ -30,9 +30,9 @@ Welcome to the technical and educational documentation for the **Technology-Medi
 | **Module 06** | [Online & Offline Assessments, Server-Side Scoring & Gradebook](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/06_assessments_and_scoring.md) | Sprint 6 | ✅ **Completed** | 11 / 11 |
 | **Module 06.1 Annex** | [Termly Exam Sets, Printable PDF Releases & UNEB Division Grading Engine](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/06_1_annex_exam_sets_and_grading.md) | Sprint 6.1 | ✅ **Completed** | 21 / 21 |
 | **Module 07** | [Offline PWA, Caching & Synchronisation](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/07_offline_sync.md) | Sprint 7 | ✅ **Completed** | 11 / 11 |
-| **Module 08** | [Activities, Progress Tracking & Role-Based Dashboards](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/08_progress_dashboards.md) | Sprint 8 | ✅ **Completed** | 27 / 27 |
-| **Module 09** | Reporting & Compliance Analytics | Sprint 9 | ⏳ Upcoming | Pending |
-| **Module 10** | In-App Notifications Engine | Sprint 10 | ⏳ Upcoming | Pending |
-| **Module 11** | Messaging & Curriculum Circulars | Sprint 11 | ⏳ Upcoming | Pending |
+| **Module 08** | [Activities, Progress Tracking & Role-Based Dashboards](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/08_progress_dashboards.md) | Sprint 8 | ✅ **Completed** | 32 / 32 |
+| **Module 09** | [Reporting, Analytics & MoES Curriculum Compliance](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/09_reporting_and_compliance.md) | Sprint 9 | ✅ **Completed** | 32 / 32 |
+| **Module 10** | [Notifications, Alerts & MoES Statutory Circulars Engine](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/10_notifications.md) | Sprint 10 | ✅ **Completed** | 23 / 23 |
+| **Module 11** | Messaging & Curriculum Inquiries | Sprint 11 | ⏳ Upcoming | Pending |
 | **Module 12** | Audit Trail & Administration | Sprint 12 | ⏳ Upcoming | Pending |
 | **Module 13** | Testing, Validation & Dissertation Evidence | Sprint 13 | ⏳ Upcoming | Pending |

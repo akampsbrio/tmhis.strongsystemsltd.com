@@ -10,9 +10,9 @@ This directory contains technical guides and tracking for each module derived fr
 - [**Module 06 — Online & Offline Assessments, Server-Side Scoring & Gradebook**](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/06_assessments_and_scoring.md) *(Completed & Verified — 11/11 tests)*
 - [**Module 06.1 Annex — Termly Exam Sets, Printable PDF Releases & UNEB Division Auto-Grading Engine**](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/06_1_annex_exam_sets_and_grading.md) *(Completed & Verified — 21/21 tests)*
 - [**Module 07 — PWA Offline Architecture & Synchronisation**](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/07_offline_sync.md) *(Completed & Verified — 11/11 tests)*
-- [**Module 08 — Progress Tracking & Role-Based Dashboards**](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/08_progress_dashboards.md) *(Completed & Verified — 27/27 tests)*
-- **Module 09 — Reporting & Compliance Analytics** *(Upcoming - Sprint 9)*
-- **Module 10 — In-App Notifications Engine** *(Upcoming - Sprint 10)*
-- **Module 11 — Messaging & Curriculum Circulars** *(Upcoming - Sprint 11)*
-- **Module 12 — Audit Trail & Technical Administration** *(Upcoming - Sprint 12)*
+- [**Module 08 — Progress Tracking & Role-Based Dashboards**](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/08_progress_dashboards.md) *(Completed & Verified — 32/32 tests)*
+- [**Module 09 — Reporting & Compliance Analytics**](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/09_reporting_and_compliance.md) *(Completed & Verified — 32/32 tests)*
+- [**Module 10 — Notifications, Alerts & MoES Statutory Circulars Engine**](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/10_notifications.md) *(Completed & Verified — 23/23 tests)*
+- **Module 11 — Messaging & Curriculum Inquiries** *(Upcoming - Sprint 11)*
+- [**Module 12 — Administration, Security Audit Trail & System Health Engine**](file:///home/tmhis/htdocs/tmhis.strongsystemsltd.com/docs/modules/12_audit_admin_system.md) *(Completed & Verified — 22/22 tests)*
 - **Module 13 — Testing, Validation & Dissertation Evidence** *(Upcoming - Sprint 13)*

@@ -647,8 +647,9 @@ const ProgressApp = {
                     </p>
                 </div>
                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <a href="#officer-compliance" class="btn btn-primary btn-sm" style="font-weight:600;">📊 MoES Compliance Audit</a>
                     <a href="#curriculum-explorer" class="btn btn-secondary btn-sm" style="font-weight:600;">📋 Curriculum Setup</a>
-                    <a href="#officer-exams" class="btn btn-primary btn-sm" style="font-weight:600;">📄 Official Exam Sets</a>
+                    <a href="#officer-exams" class="btn btn-secondary btn-sm" style="font-weight:600;">📄 Exam Sets</a>
                 </div>
             </div>
 

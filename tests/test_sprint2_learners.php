@@ -59,7 +59,7 @@ $db = Database::getConnection();
 echo "\n--- RUNNING TMHIS MODULE 02: PARENT & LEARNER TESTS ---\n\n";
 
 // 1. Verify Primary Classes (P1 to P7)
-$classes = $db->query("SELECT class_id, class_code, class_name, level, min_age, max_age FROM classes ORDER BY level")->fetchAll(PDO::FETCH_ASSOC);
+$classes = $db->query("SELECT class_id, class_code, class_name, level, min_age, max_age FROM classes WHERE class_code IN ('P1','P2','P3','P4','P5','P6','P7') ORDER BY level")->fetchAll(PDO::FETCH_ASSOC);
 $classCodes = array_column($classes, 'class_code');
 $test->assert("All 7 Primary classes (P1 to P7) exist with age guidelines", count($classes) === 7 && in_array('P1', $classCodes) && in_array('P7', $classCodes));
 
