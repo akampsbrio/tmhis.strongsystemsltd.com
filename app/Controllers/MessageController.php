@@ -26,10 +26,11 @@ class MessageController
         $user = AuthMiddleware::handle();
         $userId = (int)$user['user_id'];
 
-        $status = $query['status'] ?? 'all';
-        $search = $query['search'] ?? null;
-        $page = max(1, (int)($query['page'] ?? 1));
-        $limit = min(50, max(5, (int)($query['limit'] ?? 25)));
+        $q = !empty($query) ? $query : $_GET;
+        $status = $q['status'] ?? $q['filter'] ?? 'all';
+        $search = $q['q'] ?? $q['search'] ?? null;
+        $page = max(1, (int)($q['page'] ?? 1));
+        $limit = min(50, max(5, (int)($q['limit'] ?? 25)));
 
         $result = $this->messageService->getUserThreads($userId, $status, $search, $page, $limit);
         Response::success($result, 'Threads retrieved successfully.');
@@ -39,17 +40,19 @@ class MessageController
      * POST /api/messages/threads
      * Start a new conversation thread
      */
-    public function createThread(array $body): void
+    public function createThread(?array $body = null): void
     {
         $user = AuthMiddleware::handle();
         $creatorUserId = (int)$user['user_id'];
 
-        $recipientUserId = (int)($body['recipient_user_id'] ?? 0);
-        $subjectLine = trim($body['subject_line'] ?? '');
-        $initialMessage = trim($body['message_body'] ?? '');
-        $subjectId = !empty($body['subject_id']) ? (int)$body['subject_id'] : null;
-        $learnerId = !empty($body['learner_id']) ? (int)$body['learner_id'] : null;
-        $isImportant = !empty($body['is_important']);
+        $payload = $body ?? json_decode(file_get_contents('php://input'), true) ?? $_POST ?? [];
+
+        $recipientUserId = (int)($payload['recipient_user_id'] ?? 0);
+        $subjectLine = trim((string)($payload['subject_line'] ?? ''));
+        $initialMessage = trim((string)($payload['initial_message'] ?? $payload['message_body'] ?? ''));
+        $subjectId = !empty($payload['subject_id']) ? (int)$payload['subject_id'] : null;
+        $learnerId = !empty($payload['learner_id']) ? (int)$payload['learner_id'] : null;
+        $isImportant = !empty($payload['is_important']);
 
         if ($recipientUserId <= 0) {
             Response::badRequest('recipient_user_id is required.');
@@ -62,7 +65,7 @@ class MessageController
         }
 
         if ($initialMessage === '') {
-            Response::badRequest('message_body is required.');
+            Response::badRequest('initial_message is required.');
             return;
         }
 
@@ -104,11 +107,13 @@ class MessageController
      * POST /api/messages/threads/{id}/messages
      * Send a reply in an existing thread
      */
-    public function sendReply(int $id, array $body): void
+    public function sendReply(int $id, ?array $body = null): void
     {
         $user = AuthMiddleware::handle();
         $userId = (int)$user['user_id'];
-        $messageBody = trim($body['message_body'] ?? '');
+
+        $payload = $body ?? json_decode(file_get_contents('php://input'), true) ?? $_POST ?? [];
+        $messageBody = trim((string)($payload['message_body'] ?? $payload['body'] ?? ''));
 
         if ($messageBody === '') {
             Response::badRequest('message_body is required.');
@@ -131,7 +136,9 @@ class MessageController
     {
         $user = AuthMiddleware::handle();
         $userId = (int)$user['user_id'];
-        $search = $query['q'] ?? $query['search'] ?? $query['query'] ?? null;
+
+        $q = !empty($query) ? $query : $_GET;
+        $search = $q['q'] ?? $q['search'] ?? $q['query'] ?? null;
 
         $recipients = $this->messageService->getRecipientsDirectory($userId, $search);
         Response::success([
